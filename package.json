@@ -1,0 +1,21 @@
+{
+  "name": "pro-general-pos",
+  "version": "2.4.0",
+  "private": false,
+  "description": "Pro General POS — Enterprise-Grade Cloud & Offline-First Point of Sale System built with Next.js & React",
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
