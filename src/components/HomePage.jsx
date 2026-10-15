@@ -7,7 +7,6 @@ import {
 } from "./AnimatedDiagrams";
 import {
   Terminal,
-  ShieldCheck,
   Zap,
   ScanBarcode,
   Printer,
@@ -15,17 +14,18 @@ import {
   Users,
   BarChart3,
   ArrowRight,
-  CheckCircle2,
   Lock,
   UserPlus,
   LogIn,
   Sparkles,
-  Globe,
   GitBranch,
   Rocket,
   CreditCard,
   Package,
   RefreshCw,
+  Calculator,
+  Scale,
+  Info,
 } from "lucide-react";
 import { CURRENCY_OPTIONS } from "../data/initialData";
 
@@ -42,30 +42,23 @@ export default function HomePage({
   const [customStoreName, setCustomStoreName] = useState(
     storeSettings?.storeName || "Pro General POS"
   );
-  const [role, setRole] = useState("Store Manager (Full Admin)");
+  const [role, setRole] = useState("Point of Sale Administrator");
   const [selectedCurrency, setSelectedCurrency] = useState(
     storeSettings?.currency || "$"
   );
-  const [authError, setAuthError] = useState("");
 
   const handleAuthSubmit = (e) => {
     e.preventDefault();
-    setAuthError("");
-    if (!email.trim()) {
-      setAuthError("Please enter a valid work email address.");
-      return;
-    }
-    const userPayload = {
-      name: authMode === "signup" ? fullName || "Store Owner" : "Alex Morgan",
-      email: email.trim(),
-      role: role,
+    onAuthenticatedLaunch({
+      name: authMode === "signup" ? fullName || "Store Manager" : "Alex Morgan",
+      email: email.trim() || "admin@progeneralpos.com",
+      role,
       storeName:
         authMode === "signup" && customStoreName.trim()
           ? customStoreName.trim()
           : storeSettings?.storeName || "Pro General POS",
       currency: selectedCurrency,
-    };
-    onAuthenticatedLaunch(userPayload);
+    });
   };
 
   const handleQuickRoleLaunch = (presetName, presetRole, presetEmail) => {
@@ -80,22 +73,22 @@ export default function HomePage({
 
   return (
     <div className="pos-homepage-root">
-      {/* Top Sticky Glass Header */}
+      {/* Top Bright Odoo-Styled Header */}
       <header className="pos-home-header">
         <div className="pos-home-header-inner">
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div className="pos-brand-logo">
-              <ScanBarcode size={22} color="#090D16" strokeWidth={2.5} />
+              <ScanBarcode size={21} color="#FFFFFF" strokeWidth={2.5} />
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "18px", fontWeight: 800, color: "#F8FAFC", letterSpacing: "-0.02em" }}>
+                <span style={{ fontSize: "18.5px", fontWeight: 800, color: "#0F172A", letterSpacing: "-0.02em" }}>
                   Pro General POS
                 </span>
-                <span className="pos-version-pill">v2.4 ENTERPRISE</span>
+                <span className="pos-version-pill">ODOO 18 EDITION</span>
               </div>
-              <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-                Next.js • React 18 • Cloud & Offline-First Retail OS
+              <div style={{ fontSize: "11.5px", color: "#64748B" }}>
+                Bright & Simple Retail POS • Next.js + React
               </div>
             </div>
           </div>
@@ -105,7 +98,7 @@ export default function HomePage({
               Animated Diagrams
             </a>
             <a href="#features-matrix" className="pos-home-nav-link">
-              All Features
+              Odoo POS Features
             </a>
             <a href="#auth-portal" className="pos-home-nav-link">
               Sign In / Sign Up
@@ -114,68 +107,65 @@ export default function HomePage({
               type="button"
               onClick={onOpenDeployModal}
               className="pos-btn-secondary"
-              style={{ padding: "8px 14px", fontSize: "12.5px" }}
             >
               <GitBranch size={14} />
-              <span>GitHub & Vercel Setup</span>
+              <span>GitHub & Vercel</span>
             </button>
             <button
               type="button"
               onClick={() =>
                 handleQuickRoleLaunch(
                   currentUser?.name || "Alex Morgan",
-                  currentUser?.role || "Store Manager (Full Admin)",
+                  currentUser?.role || "Point of Sale Administrator",
                   currentUser?.email || "admin@progeneralpos.com"
                 )
               }
               className="pos-btn-primary"
-              style={{ padding: "9px 18px", fontSize: "13px" }}
             >
               <Terminal size={15} />
-              <span>Launch Live POS Terminal</span>
+              <span>Open POS Session</span>
               <ArrowRight size={14} />
             </button>
           </nav>
         </div>
       </header>
 
-      {/* HERO SECTION WITH ANIMATED ARCHITECTURE DIAGRAM + AUTH PORTAL */}
+      {/* BRIGHT HERO SECTION */}
       <section className="pos-hero-section">
         <div className="pos-hero-container">
-          {/* Left Column: Brand Value Prop + Live Animated Diagram */}
+          {/* Left Column */}
           <div className="pos-hero-left">
             <div className="pos-hero-eyebrow">
-              <Sparkles size={14} color="#10B981" />
-              <span>BUILT FOR SUPERMARKETS, GENERAL STORES, PHARMACIES & B2B WHOLESALE</span>
+              <Sparkles size={14} color="#714B67" />
+              <span>SIMPLE, BRIGHT & ODOO-STYLE POINT OF SALE SYSTEM</span>
             </div>
 
             <h1 className="pos-hero-title">
-              The Fastest, Most Complete{" "}
-              <span className="pos-gradient-text">Pro General POS</span>{" "}
-              Ever Built for Modern Retail.
+              Run Your Store Effortlessly with{" "}
+              <span className="pos-gradient-text">Pro General POS</span>
             </h1>
 
             <p className="pos-hero-subtitle">
-              Engineered with Next.js and React for zero-latency barcode checkout, dual
-              Retail & Wholesale pricing tiers, multi-tender split payments, customer
-              credit ledgers, printable barcode label sheets, and automated Shift Z-Reports.
+              Designed with a clean, bright interface inspired by Odoo Point of Sale:
+              interactive Numpad (<strong>Qty, % Disc, Price</strong>), Dynamic Pricelists,
+              Product Info popups, Electronic Scale weighing, Refund / Credit Notes,
+              Cash In/Out control, and Odoo-style Product Form sheets.
             </p>
 
-            {/* Quick Action Row */}
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "26px" }}>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "24px" }}>
               <button
                 type="button"
                 onClick={() =>
                   handleQuickRoleLaunch(
                     "Alex Morgan",
-                    "Store Manager (Full Admin)",
+                    "Point of Sale Administrator",
                     "admin@progeneralpos.com"
                   )
                 }
                 className="pos-btn-primary pos-btn-lg"
               >
-                <Zap size={18} />
-                <span>Open Live POS Terminal Instantly</span>
+                <Zap size={17} />
+                <span>Open POS Register Session</span>
                 <ArrowRight size={16} />
               </button>
 
@@ -184,8 +174,8 @@ export default function HomePage({
                 className="pos-btn-secondary pos-btn-lg"
                 style={{ textDecoration: "none" }}
               >
-                <UserPlus size={17} />
-                <span>Create Store Account (Free)</span>
+                <UserPlus size={16} />
+                <span>Sign Up New Store</span>
               </a>
 
               <button
@@ -193,24 +183,16 @@ export default function HomePage({
                 onClick={onOpenDeployModal}
                 className="pos-btn-secondary pos-btn-lg"
               >
-                <Rocket size={17} color="#38BDF8" />
-                <span>Deploy to Vercel & GitHub</span>
+                <Rocket size={16} color="#017E84" />
+                <span>GitHub & Vercel Links</span>
               </button>
             </div>
 
-            {/* Interactive Hero Animated Diagram */}
-            <HeroArchitectureDiagram
-              onLaunchPos={() =>
-                handleQuickRoleLaunch(
-                  "Alex Morgan",
-                  "Store Manager (Full Admin)",
-                  "admin@progeneralpos.com"
-                )
-              }
-            />
+            {/* Bright Animated Diagram */}
+            <HeroArchitectureDiagram />
           </div>
 
-          {/* Right Column: Sign In / Sign Up Card + 1-Click Cashier Launch */}
+          {/* Right Column: Bright Clean Sign In / Sign Up Card */}
           <div id="auth-portal" className="pos-auth-card">
             <div className="pos-auth-tabs">
               <button
@@ -219,7 +201,7 @@ export default function HomePage({
                 className={`pos-auth-tab ${authMode === "login" ? "active" : ""}`}
               >
                 <LogIn size={15} />
-                <span>Sign In to Terminal</span>
+                <span>Log In</span>
               </button>
               <button
                 type="button"
@@ -227,61 +209,45 @@ export default function HomePage({
                 className={`pos-auth-tab ${authMode === "signup" ? "active" : ""}`}
               >
                 <UserPlus size={15} />
-                <span>Register New Store</span>
+                <span>Sign Up Store</span>
               </button>
             </div>
 
             <div style={{ padding: "22px" }}>
               <div style={{ marginBottom: "16px" }}>
-                <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800, color: "#F8FAFC" }}>
+                <h2 style={{ margin: 0, fontSize: "19px", fontWeight: 800, color: "#0F172A" }}>
                   {authMode === "login"
-                    ? "Access Pro General POS"
+                    ? "Sign In to Pro General POS"
                     : "Create Your Free Store Account"}
                 </h2>
-                <p style={{ margin: "5px 0 0", fontSize: "12.5px", color: "#94A3B8" }}>
+                <p style={{ margin: "4px 0 0", fontSize: "12.5px", color: "#64748B" }}>
                   {authMode === "login"
-                    ? "Sign in with your operator credentials or use 1-Click Instant Cashier Access below."
-                    : "Configure your store name, default currency, and operator profile in seconds."}
+                    ? "Enter your operator details or click 1-Click Demo Login below."
+                    : "Set up your store name, default currency, and POS operator role."}
                 </p>
               </div>
 
-              {authError && (
-                <div
-                  style={{
-                    background: "rgba(239, 68, 68, 0.14)",
-                    border: "1px solid #EF4444",
-                    color: "#FCA5A5",
-                    padding: "10px 12px",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                    marginBottom: "14px",
-                  }}
-                >
-                  {authError}
-                </div>
-              )}
-
-              <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "13px" }}>
+              <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {authMode === "signup" && (
                   <>
                     <div>
-                      <label className="pos-field-label">Store / Business Name</label>
+                      <label className="pos-field-label">Store / Shop Name</label>
                       <input
                         type="text"
                         value={customStoreName}
                         onChange={(e) => setCustomStoreName(e.target.value)}
-                        placeholder="e.g., Pro General POS Supermarket"
+                        placeholder="Pro General POS"
                         className="pos-input"
                         required
                       />
                     </div>
                     <div>
-                      <label className="pos-field-label">Full Name (Manager / Cashier)</label>
+                      <label className="pos-field-label">Your Full Name</label>
                       <input
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="e.g., Alex Morgan"
+                        placeholder="Alex Morgan"
                         className="pos-input"
                         required
                       />
@@ -290,7 +256,7 @@ export default function HomePage({
                 )}
 
                 <div>
-                  <label className="pos-field-label">Operator Email Address</label>
+                  <label className="pos-field-label">Email Address</label>
                   <input
                     type="email"
                     value={email}
@@ -302,12 +268,12 @@ export default function HomePage({
                 </div>
 
                 <div>
-                  <label className="pos-field-label">Security Password / PIN</label>
+                  <label className="pos-field-label">Password / Cashier PIN</label>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password or 4-digit PIN"
+                    placeholder="Enter password or PIN"
                     className="pos-input"
                     required
                   />
@@ -321,13 +287,13 @@ export default function HomePage({
                       onChange={(e) => setRole(e.target.value)}
                       className="pos-input"
                     >
-                      <option value="Store Manager (Full Admin)">Store Manager (Admin)</option>
-                      <option value="Head Cashier (Register)">Head Cashier</option>
-                      <option value="Inventory Supervisor">Inventory Supervisor</option>
+                      <option value="Point of Sale Administrator">POS Administrator</option>
+                      <option value="Shop Floor Cashier">Shop Floor Cashier</option>
+                      <option value="Inventory Manager">Inventory Manager</option>
                     </select>
                   </div>
                   <div>
-                    <label className="pos-field-label">Store Currency</label>
+                    <label className="pos-field-label">Default Currency</label>
                     <select
                       value={selectedCurrency}
                       onChange={(e) => setSelectedCurrency(e.target.value)}
@@ -345,45 +311,43 @@ export default function HomePage({
                 <button
                   type="submit"
                   className="pos-btn-primary"
-                  style={{ width: "100%", justifyContent: "center", padding: "13px", fontSize: "14px", marginTop: "4px" }}
+                  style={{ width: "100%", justifyContent: "center", padding: "12px", fontSize: "14px", marginTop: "4px" }}
                 >
                   <Lock size={15} />
                   <span>
                     {authMode === "login"
-                      ? "Sign In & Launch POS Terminal"
-                      : "Create Account & Launch POS"}
+                      ? "Sign In & Open POS Session"
+                      : "Register & Launch POS"}
                   </span>
                   <ArrowRight size={15} />
                 </button>
               </form>
 
-              {/* Divider */}
               <div className="pos-auth-divider">
-                <span>OR 1-CLICK INSTANT DEMO OPERATOR ACCESS</span>
+                <span>OR 1-CLICK INSTANT DEMO LOGIN</span>
               </div>
 
-              {/* 1-Click Role Buttons */}
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <button
                   type="button"
                   onClick={() =>
                     handleQuickRoleLaunch(
                       "Alex Morgan",
-                      "Store Manager (Full Admin)",
-                      "alex.morgan@progeneralpos.com"
+                      "Point of Sale Administrator",
+                      "alex@progeneralpos.com"
                     )
                   }
                   className="pos-quick-role-btn"
                 >
                   <div>
-                    <div style={{ fontWeight: 700, color: "#F8FAFC", fontSize: "13px" }}>
-                      Instant Login: Store Manager (Full Admin)
+                    <div style={{ fontWeight: 700, color: "#0F172A", fontSize: "13px" }}>
+                      1-Click Login: POS Administrator (All Odoo Modules)
                     </div>
-                    <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-                      All 8 Modules • POS Register, Inventory, Z-Report, Analytics
+                    <div style={{ fontSize: "11.5px", color: "#64748B" }}>
+                      Register, Numpad, Products Form, Cash In/Out, Closing Control
                     </div>
                   </div>
-                  <ArrowRight size={15} color="#10B981" />
+                  <ArrowRight size={15} color="#714B67" />
                 </button>
 
                 <button
@@ -391,21 +355,21 @@ export default function HomePage({
                   onClick={() =>
                     handleQuickRoleLaunch(
                       "Jordan Lee",
-                      "Head Cashier (Express Counter)",
-                      "jordan.lee@progeneralpos.com"
+                      "Shop Floor Cashier",
+                      "jordan@progeneralpos.com"
                     )
                   }
                   className="pos-quick-role-btn"
                 >
                   <div>
-                    <div style={{ fontWeight: 700, color: "#F8FAFC", fontSize: "13px" }}>
-                      Instant Login: Head Cashier (Express Counter)
+                    <div style={{ fontWeight: 700, color: "#0F172A", fontSize: "13px" }}>
+                      1-Click Login: Shop Floor Cashier (Fast Checkout)
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: "11px", color: "#60A5FA" }}>
-                      High-Speed Barcode Checkout • Split Tender • Thermal Print
+                    <div style={{ fontSize: "11.5px", color: "#017E84", fontWeight: 600 }}>
+                      Barcode Scan • Electronic Scale • Split Payment • 80mm Receipt
                     </div>
                   </div>
-                  <ArrowRight size={15} color="#3B82F6" />
+                  <ArrowRight size={15} color="#017E84" />
                 </button>
               </div>
             </div>
@@ -413,18 +377,17 @@ export default function HomePage({
         </div>
       </section>
 
-      {/* INTERACTIVE SYSTEM DIAGRAMS SECTION */}
+      {/* ANIMATED DIAGRAMS SECTION */}
       <section id="live-diagrams" className="pos-section-block">
         <div className="pos-section-container">
-          <div style={{ textAlign: "center", maxWidth: "760px", margin: "0 auto 28px" }}>
-            <span className="pos-section-tag">LIVE ANIMATED SYSTEM ARCHITECTURE</span>
+          <div style={{ textAlign: "center", maxWidth: "740px", margin: "0 auto 26px" }}>
+            <span className="pos-section-tag">INTERACTIVE ANIMATED DIAGRAMS</span>
             <h2 className="pos-section-heading">
-              Visualizing the Engineering Behind Pro General POS
+              How Pro General POS Connects Checkout, Inventory & Accounting
             </h2>
-            <p style={{ color: "#94A3B8", fontSize: "14.5px", lineHeight: 1.6, margin: 0 }}>
-              Explore our interactive, real-time animated diagrams illustrating the 0.2-second
-              express checkout pipeline, hybrid offline-first storage engine, and closed-loop
-              inventory & profit waterfall.
+            <p style={{ color: "#475569", fontSize: "14.5px", lineHeight: 1.6, margin: 0 }}>
+              Click through the three animated diagrams below to see the real-time checkout
+              flow, offline-first browser storage, and automated warehouse stock moves.
             </p>
           </div>
 
@@ -432,69 +395,68 @@ export default function HomePage({
         </div>
       </section>
 
-      {/* ALL-INCLUSIVE FREE FEATURES & MARKET COMPARISON SECTION */}
-      <section id="features-matrix" className="pos-section-block" style={{ background: "rgba(15, 23, 42, 0.45)" }}>
+      {/* ODOO POS FEATURES MATRIX */}
+      <section id="features-matrix" className="pos-section-block" style={{ background: "#FFFFFF" }}>
         <div className="pos-section-container">
-          <div style={{ textAlign: "center", maxWidth: "760px", margin: "0 auto 32px" }}>
-            <span className="pos-section-tag">100% UNLOCKED ENTERPRISE CAPABILITIES</span>
+          <div style={{ textAlign: "center", maxWidth: "740px", margin: "0 auto 30px" }}>
+            <span className="pos-section-tag">AUTHENTIC ODOO POS CAPABILITIES</span>
             <h2 className="pos-section-heading">
-              Every Feature You Need to Outperform Legacy POS Systems
+              Every Odoo Point of Sale Feature Built Right In
             </h2>
-            <p style={{ color: "#94A3B8", fontSize: "14.5px", lineHeight: 1.6, margin: 0 }}>
-              Zero monthly subscription lock-ins, zero per-terminal fees, and zero artificial
-              SKU limits. Everything is built right in and ready to deploy on Vercel & GitHub.
+            <p style={{ color: "#475569", fontSize: "14.5px", lineHeight: 1.6, margin: 0 }}>
+              Simple, bright, fast, and packed with the exact fields and tools store owners love in Odoo.
             </p>
           </div>
 
           <div className="pos-feature-grid">
             {[
               {
-                icon: ScanBarcode,
-                color: "#3B82F6",
-                title: "Laser Barcode & Acoustic Wedge",
-                desc: "Scan EAN-13/UPC barcodes via hardware laser scanner or simulate scans in 1 click with synthesized Web Audio beep feedback.",
+                icon: Calculator,
+                color: "#714B67",
+                title: "Odoo Interactive Numpad (Qty, % Disc, Price)",
+                desc: "Tap any orderline and use the built-in Odoo Numpad to type exact quantities, percentage discounts, or unit price overrides.",
+              },
+              {
+                icon: Info,
+                color: "#017E84",
+                title: "Product Info 'i' Popup & Odoo Product Form",
+                desc: "Inspect On-Hand & Forecasted warehouse stock, profit margins, tax rates, internal references, and supplier details right from the register.",
               },
               {
                 icon: Layers,
-                color: "#10B981",
-                title: "Dual Retail & Wholesale Tiers",
-                desc: "Switch any transaction between standard Retail pricing and B2B Wholesale tier pricing with a single toggle on the register.",
+                color: "#059669",
+                title: "Dynamic Pricelists & Fiscal Positions",
+                desc: "Switch between Public Retail, VIP Gold (-10%), B2B Wholesale, and Employee Pricelists, plus Domestic vs. Tax-Exempt Fiscal Positions.",
               },
               {
-                icon: CreditCard,
-                color: "#8B5CF6",
-                title: "5-Way Multi-Tender & Split Pay",
-                desc: "Accept Cash (with quick denomination change calculator), Card, Dynamic QR Wallet, Customer Credit Ledger, or Split Cash + Card.",
+                icon: Scale,
+                color: "#16A34A",
+                title: "Electronic Scale Weighing (kg)",
+                desc: "Sell weighted fresh produce & grocery items with the built-in Electronic Scale simulator that calculates price by exact weight (kg).",
               },
               {
                 icon: RefreshCw,
-                color: "#F59E0B",
-                title: "Hold / Park & Recall Bills",
-                desc: "Park an active customer cart in 1 click while they grab another item, serve the next shopper immediately, and recall the parked bill anytime.",
+                color: "#D97706",
+                title: "Odoo Refund / Credit Note & Floating Orders",
+                desc: "Hold multiple floating orders in the top bar (`0001`, `0002`), or click Refund to reverse any past order and restock warehouse inventory.",
               },
               {
-                icon: Printer,
-                color: "#06B6D4",
-                title: "80mm Thermal Receipt & Barcode Studio",
-                desc: "Print standard 80mm thermal receipts with itemized tax breakdowns, plus generate printable barcode price sticker sheets for shelves.",
-              },
-              {
-                icon: Users,
-                color: "#EC4899",
-                title: "Customer Loyalty & Credit Ledger",
-                desc: "Track VIP customer points, manage B2B credit limits (Buy Now, Pay Later), and record credit settlement payments with full audit history.",
+                icon: CreditCard,
+                color: "#2563EB",
+                title: "Payment Screen with Formal Invoice Toggle",
+                desc: "Accept Cash, Card, QR Wallet, Split Tenders, or Customer Credit Account, and toggle 'Invoice' to print a formal Tax Invoice.",
               },
               {
                 icon: Package,
-                color: "#22C55E",
-                title: "1-Click Returns & Auto-Restock",
-                desc: "Process full or partial invoice refunds in seconds—returned items are automatically added back to live inventory counts.",
+                color: "#7C3AED",
+                title: "Cash In / Cash Out & Closing Session Control",
+                desc: "Record petty cash movements with reasons during the shift and reconcile expected vs. counted drawer cash at Session Closing.",
               },
               {
-                icon: BarChart3,
-                color: "#38BDF8",
-                title: "Cash Drawer & Shift Z-Report",
-                desc: "Track opening float, petty cash store expenses, expected vs. counted drawer cash, gross margin, COGS, and printable Shift Z-Reports.",
+                icon: Printer,
+                color: "#DB2777",
+                title: "80mm Thermal Receipt & Barcode Label Studio",
+                desc: "Print clean 80mm receipts with Customer Notes & Order Notes, or generate printable barcode shelf sticker sheets.",
               },
             ].map((feat, i) => {
               const IconComp = feat.icon;
@@ -502,14 +464,14 @@ export default function HomePage({
                 <div key={i} className="pos-feature-card">
                   <div
                     className="pos-feature-icon"
-                    style={{ background: `${feat.color}18`, borderColor: `${feat.color}40` }}
+                    style={{ background: `${feat.color}12`, borderColor: `${feat.color}35` }}
                   >
                     <IconComp size={20} color={feat.color} />
                   </div>
-                  <h3 style={{ margin: "14px 0 6px", fontSize: "15.5px", fontWeight: 700, color: "#F8FAFC" }}>
+                  <h3 style={{ margin: "12px 0 6px", fontSize: "15.5px", fontWeight: 800, color: "#0F172A" }}>
                     {feat.title}
                   </h3>
-                  <p style={{ margin: 0, fontSize: "13px", color: "#94A3B8", lineHeight: 1.55 }}>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#475569", lineHeight: 1.55 }}>
                     {feat.desc}
                   </p>
                 </div>
@@ -519,44 +481,42 @@ export default function HomePage({
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* BRIGHT FOOTER */}
       <footer className="pos-home-footer">
         <div className="pos-section-container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div className="pos-brand-logo" style={{ width: "30px", height: "30px" }}>
-              <ScanBarcode size={17} color="#090D16" />
+              <ScanBarcode size={16} color="#FFFFFF" />
             </div>
-            <span style={{ fontWeight: 800, color: "#F8FAFC", fontSize: "15px" }}>
+            <span style={{ fontWeight: 800, color: "#0F172A", fontSize: "15px" }}>
               Pro General POS
             </span>
             <span style={{ color: "#64748B", fontSize: "12.5px" }}>
-              © 2026 Pro General POS • Built with Next.js & React • Ready for Vercel & GitHub
+              © 2026 Pro General POS • Bright Odoo-Style Retail Edition
             </span>
           </div>
 
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div style={{ display: "flex", gap: "10px" }}>
             <button
               type="button"
               onClick={onOpenDeployModal}
               className="pos-btn-secondary"
-              style={{ padding: "8px 14px", fontSize: "12px" }}
             >
               <GitBranch size={14} />
-              <span>GitHub & Vercel Deployment Guide</span>
+              <span>GitHub & Vercel Deployment</span>
             </button>
             <button
               type="button"
               onClick={() =>
                 handleQuickRoleLaunch(
                   "Alex Morgan",
-                  "Store Manager (Full Admin)",
+                  "Point of Sale Administrator",
                   "admin@progeneralpos.com"
                 )
               }
               className="pos-btn-primary"
-              style={{ padding: "8px 16px", fontSize: "12px" }}
             >
-              <span>Launch POS Terminal →</span>
+              <span>Open POS Session →</span>
             </button>
           </div>
         </div>

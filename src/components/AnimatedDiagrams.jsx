@@ -2,127 +2,114 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  ScanBarcode,
-  ShoppingCart,
-  CreditCard,
-  PackageCheck,
-  Printer,
-  Cpu,
-  Wifi,
-  Database,
-  RefreshCw,
-  ArrowRight,
-  Zap,
-  CheckCircle2,
-  TrendingUp,
-  Layers,
-  ShieldCheck,
-  Play,
   Activity,
+  Zap,
+  Database,
+  TrendingUp,
 } from "lucide-react";
 
 const HERO_NODES = [
   {
     id: "scanner",
     step: "01",
-    title: "Omni-Scanner Input",
-    subtitle: "Laser Barcode • SKU • Touch",
+    title: "Barcode & Scale Input",
+    subtitle: "pos.session • EAN-13 & Weight",
     latency: "8ms",
-    throughput: "120 scans/min",
-    color: "#3B82F6",
+    throughput: "Barcode + Scale",
+    color: "#714B67",
     x: 95,
     y: 110,
     details:
-      "Supports USB/Bluetooth laser barcode wedges, keyboard shortcut search (/ or F2), and instant 1-tap category grid filtering with Web Audio acoustic beep confirmation.",
+      "Odoo-style barcode scanner wedge & electronic scale integration. Automatically weighs fresh produce (kg) or scans packaged SKUs with instant audio feedback.",
     metrics: [
-      { label: "Scan Recognition", value: "99.98%" },
-      { label: "Wedge Latency", value: "< 8 ms" },
-      { label: "Formats", value: "EAN-13 / Code128" },
+      { label: "Odoo Model", value: "pos.session" },
+      { label: "Electronic Scale", value: "Auto Weight (kg)" },
+      { label: "Barcode Wedge", value: "EAN-13 / Code128" },
     ],
   },
   {
     id: "cart",
     step: "02",
-    title: "Smart Cart & Pricing Core",
-    subtitle: "Retail / Wholesale • Hold Bill",
+    title: "Numpad & Pricelist Core",
+    subtitle: "Qty • % Disc • Price • Notes",
     latency: "4ms",
-    throughput: "Zero-Lag State",
-    color: "#10B981",
+    throughput: "product.pricelist",
+    color: "#017E84",
     x: 360,
     y: 75,
     details:
-      "Real-time calculation engine handling Retail vs. Wholesale price tiers, per-line custom discounts, promo codes, tax toggling, and multi-slot Bill Parking (Hold & Recall).",
+      "Authentic Odoo interactive Numpad switching seamlessly between Qty, % Disc, and Price override modes, plus Dynamic Pricelists (Public, VIP Gold, Wholesale B2B) and Customer/Internal Notes.",
     metrics: [
-      { label: "Pricing Tiers", value: "Retail + Wholesale" },
-      { label: "Parked Bills", value: "Unlimited Slots" },
-      { label: "Math Precision", value: "Exact Tabular" },
+      { label: "Numpad Modes", value: "Qty / %Disc / Price" },
+      { label: "Pricelists", value: "Retail / VIP / B2B" },
+      { label: "Fiscal Tax", value: "Auto Tax Mapping" },
     ],
   },
   {
     id: "payment",
     step: "03",
-    title: "Multi-Tender & Credit Hub",
-    subtitle: "Cash • Card • QR • Ledger",
-    latency: "15ms",
-    throughput: "5 Tender Modes",
-    color: "#8B5CF6",
+    title: "Payment & Invoice Engine",
+    subtitle: "Cash • Card • Customer Account",
+    latency: "12ms",
+    throughput: "account.move",
+    color: "#059669",
     x: 625,
     y: 110,
     details:
-      "Accept exact or quick-denomination Cash with instant Change Due calculation, Card terminal, Dynamic QR Wallet, Split Payments (Cash + Card), or Customer Credit Ledger.",
+      "Odoo Payment Screen supporting Cash with quick coin/bill tenders, Bank Card terminal, Dynamic QR Wallet, Split Payments, Customer Credit Account, and 1-Click Formal Tax Invoice generation.",
     metrics: [
-      { label: "Split Tender", value: "Cash + Card" },
-      { label: "Credit Ledger", value: "B2B & VIP Limits" },
-      { label: "QR Generation", value: "Dynamic SVG" },
+      { label: "Invoice Toggle", value: " Formal Tax Invoice" },
+      { label: "Split Tender", value: "Cash + Bank Card" },
+      { label: "Partner Ledger", value: "Credit Limit Check" },
     ],
   },
   {
     id: "inventory",
     step: "04",
-    title: "Live Inventory & Batch Sync",
-    subtitle: "Stock Deduction • Expiry Alert",
+    title: "Warehouse Stock Move",
+    subtitle: "stock.picking • On-Hand Sync",
     latency: "6ms",
-    throughput: "Atomic Sync",
-    color: "#F59E0B",
+    throughput: "WH/Stock Sync",
+    color: "#D97706",
     x: 230,
     y: 285,
     details:
-      "Every completed sale or partial return atomically adjusts SKU stock levels, triggers low-stock reorder badges, monitors batch expiry dates, and updates inventory valuation.",
+      "Every POS sale or Refund / Credit Note automatically triggers an Odoo stock move (WH/Stock), updating On-Hand & Forecasted quantities, warehouse bin locations, and low-stock alerts.",
     metrics: [
-      { label: "Stock Sync", value: "Real-Time Atomic" },
-      { label: "Barcode Labels", value: "Printable Studio" },
-      { label: "Return Restock", value: "1-Click Auto" },
+      { label: "Stock Move", value: "WH/Stock → Customer" },
+      { label: "Refund Action", value: "Auto Reverse Picking" },
+      { label: "Product Info", value: "Live Margin & Stock" },
     ],
   },
   {
     id: "receipt",
     step: "05",
-    title: "Thermal Receipt & Z-Report",
-    subtitle: "80mm Print • Profit Analytics",
-    latency: "12ms",
-    throughput: "Instant Render",
-    color: "#06B6D4",
+    title: "Receipt & Session Closing",
+    subtitle: "Cash In/Out • Closing Control",
+    latency: "10ms",
+    throughput: "Z-Report Audit",
+    color: "#2563EB",
     x: 500,
     y: 285,
     details:
-      "Generates crisp 80mm thermal receipts with custom store headers, itemized tax breakdowns, scannable invoice barcodes, plus real-time Cash Drawer & Shift Z-Reports.",
+      "Prints 80mm Odoo POS receipts with Customer Notes & Tax IDs, tracks petty Cash In / Cash Out movements, and reconciles physical drawer cash at Session Closing.",
     metrics: [
-      { label: "Receipt Format", value: "80mm Thermal / PDF" },
-      { label: "Profit Tracking", value: "Gross & Net Margin" },
-      { label: "Audit Trail", value: "Full Shift Z-Report" },
+      { label: "Cash Control", value: "Cash In / Cash Out" },
+      { label: "Session Close", value: "Denomination Count" },
+      { label: "Receipt Output", value: "80mm Thermal & PDF" },
     ],
   },
 ];
 
-export function HeroArchitectureDiagram({ onLaunchPos }) {
+export function HeroArchitectureDiagram() {
   const [selectedNodeId, setSelectedNodeId] = useState("cart");
-  const [pulseCount, setPulseCount] = useState(1428);
+  const [pulseCount, setPulseCount] = useState(2480);
   const [simulatingPulse, setSimulatingPulse] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setPulseCount((c) => c + 1);
-    }, 3200);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -133,11 +120,11 @@ export function HeroArchitectureDiagram({ onLaunchPos }) {
     sequence.forEach((id, idx) => {
       setTimeout(() => {
         setSelectedNodeId(id);
-      }, idx * 450);
+      }, idx * 420);
     });
     setTimeout(() => {
       setSimulatingPulse(false);
-    }, 2400);
+    }, 2200);
   };
 
   const activeNode =
@@ -145,20 +132,20 @@ export function HeroArchitectureDiagram({ onLaunchPos }) {
 
   return (
     <div className="pos-diagram-shell">
-      {/* Top Telemetry Bar */}
+      {/* Top Bar */}
       <div className="pos-diagram-header">
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <span className="pos-live-dot" />
-          <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#93C5FD" }}>
-            LIVE INTERACTIVE POS ARCHITECTURE DIAGRAM
+          <span style={{ fontSize: "12px", fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#714B67" }}>
+            LIVE ANIMATED ODOO-STYLE POS WORKFLOW DIAGRAM
           </span>
           <span className="pos-mono-badge">
-            ENGINE: NEXT.JS + REACT STATE CORE
+            CLICK ANY NODE TO INSPECT FIELDS
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "12px", color: "#94A3B8", fontFamily: "monospace" }}>
-            TX PULSES: <strong style={{ color: "#10B981" }}>{pulseCount.toLocaleString()}</strong>
+          <span style={{ fontSize: "12px", color: "#475569", fontFamily: "monospace" }}>
+            ORDERS SYNCED: <strong style={{ color: "#017E84" }}>{pulseCount.toLocaleString()}</strong>
           </span>
           <button
             type="button"
@@ -166,191 +153,161 @@ export function HeroArchitectureDiagram({ onLaunchPos }) {
             className="pos-pulse-btn"
           >
             <Activity size={13} />
-            {simulatingPulse ? "Simulating Flow..." : "Simulate Sale Flow"}
+            {simulatingPulse ? "Running Flow..." : "Simulate Order Flow"}
           </button>
         </div>
       </div>
 
-      {/* Main Animated SVG Canvas */}
+      {/* Bright SVG Canvas */}
       <div className="pos-svg-wrapper">
         <svg
-          viewBox="0 0 720 390"
+          viewBox="0 0 720 385"
           style={{ width: "100%", height: "auto", display: "block" }}
-          aria-label="Pro General POS Interactive Animated Architecture Diagram"
+          aria-label="Pro General POS Bright Animated Odoo Workflow Diagram"
         >
           <defs>
-            <linearGradient id="bgGridGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#0F172A" />
-              <stop offset="100%" stopColor="#090D16" />
+            <linearGradient id="brightBgGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="100%" stopColor="#F8FAFC" />
             </linearGradient>
 
-            <linearGradient id="pipeBlueGreen" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#3B82F6" />
-              <stop offset="100%" stopColor="#10B981" />
-            </linearGradient>
-
-            <linearGradient id="pipeGreenPurple" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#10B981" />
-              <stop offset="100%" stopColor="#8B5CF6" />
-            </linearGradient>
-
-            <linearGradient id="pipeAmberCyan" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#F59E0B" />
-              <stop offset="100%" stopColor="#06B6D4" />
-            </linearGradient>
-
-            <filter id="glowFilter" x="-25%" y="-25%" width="150%" height="150%">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-
-            <pattern id="posGridPattern" width="30" height="30" patternUnits="userSpaceOnUse">
+            <pattern id="brightGridPattern" width="28" height="28" patternUnits="userSpaceOnUse">
               <path
-                d="M 30 0 L 0 0 0 30"
+                d="M 28 0 L 0 0 0 28"
                 fill="none"
-                stroke="rgba(148, 163, 184, 0.07)"
+                stroke="#E2E8F0"
                 strokeWidth="1"
               />
             </pattern>
           </defs>
 
-          {/* Background */}
-          <rect width="720" height="390" rx="14" fill="url(#bgGridGrad)" />
-          <rect width="720" height="390" rx="14" fill="url(#posGridPattern)" />
+          {/* Clean Bright Background */}
+          <rect width="720" height="385" rx="12" fill="url(#brightBgGrad)" stroke="#E2E8F0" />
+          <rect width="720" height="385" rx="12" fill="url(#brightGridPattern)" />
 
-          {/* Ambient Decorative Glows */}
-          <circle cx="360" cy="90" r="110" fill="rgba(16, 185, 129, 0.06)" />
-          <circle cx="500" cy="285" r="110" fill="rgba(59, 130, 246, 0.06)" />
+          {/* Soft Pastel Highlights */}
+          <circle cx="360" cy="85" r="95" fill="rgba(1, 126, 132, 0.05)" />
+          <circle cx="500" cy="285" r="95" fill="rgba(113, 75, 103, 0.05)" />
 
-          {/* Connection Paths */}
-          {/* Path 1: Scanner (95,110) -> Smart Cart (360,75) */}
+          {/* Animated Flow Lines */}
           <path
-            id="flowPath1"
             d="M 165 110 C 230 110, 260 75, 290 75"
             fill="none"
-            stroke="rgba(59, 130, 246, 0.25)"
-            strokeWidth="3"
+            stroke="#CBD5E1"
+            strokeWidth="3.5"
           />
           <path
             d="M 165 110 C 230 110, 260 75, 290 75"
             fill="none"
-            stroke="url(#pipeBlueGreen)"
+            stroke="#714B67"
             strokeWidth="2.5"
             strokeDasharray="7 7"
             className="pos-animated-dash"
           />
 
-          {/* Path 2: Smart Cart (360,75) -> Payment Hub (625,110) */}
           <path
-            id="flowPath2"
             d="M 430 75 C 480 75, 510 110, 555 110"
             fill="none"
-            stroke="rgba(139, 92, 246, 0.25)"
-            strokeWidth="3"
+            stroke="#CBD5E1"
+            strokeWidth="3.5"
           />
           <path
             d="M 430 75 C 480 75, 510 110, 555 110"
             fill="none"
-            stroke="url(#pipeGreenPurple)"
+            stroke="#017E84"
             strokeWidth="2.5"
             strokeDasharray="7 7"
             className="pos-animated-dash"
           />
 
-          {/* Path 3: Smart Cart (360,125) -> Inventory Sync (230,240) */}
           <path
-            id="flowPath3"
-            d="M 340 125 C 320 185, 260 195, 230 240"
+            d="M 340 120 C 320 185, 260 195, 230 240"
             fill="none"
-            stroke="rgba(245, 158, 11, 0.25)"
+            stroke="#CBD5E1"
             strokeWidth="3"
           />
           <path
-            d="M 340 125 C 320 185, 260 195, 230 240"
+            d="M 340 120 C 320 185, 260 195, 230 240"
             fill="none"
-            stroke="#F59E0B"
+            stroke="#D97706"
             strokeWidth="2.2"
             strokeDasharray="6 6"
             className="pos-animated-dash"
           />
 
-          {/* Path 4: Payment Hub (625,155) -> Receipt & Analytics (500,240) */}
           <path
-            id="flowPath4"
             d="M 605 155 C 585 205, 535 205, 500 240"
             fill="none"
-            stroke="rgba(6, 182, 212, 0.25)"
+            stroke="#CBD5E1"
             strokeWidth="3"
           />
           <path
             d="M 605 155 C 585 205, 535 205, 500 240"
             fill="none"
-            stroke="#06B6D4"
+            stroke="#059669"
             strokeWidth="2.2"
             strokeDasharray="6 6"
             className="pos-animated-dash"
           />
 
-          {/* Path 5: Inventory Sync (305,285) <-> Receipt & Analytics (425,285) */}
           <path
-            id="flowPath5"
             d="M 305 285 L 425 285"
             fill="none"
-            stroke="rgba(16, 185, 129, 0.25)"
+            stroke="#CBD5E1"
             strokeWidth="3"
           />
           <path
             d="M 305 285 L 425 285"
             fill="none"
-            stroke="url(#pipeAmberCyan)"
+            stroke="#2563EB"
             strokeWidth="2.5"
             strokeDasharray="6 6"
             className="pos-animated-dash"
           />
 
-          {/* Animated Glowing Data Packets Moving Along Paths */}
-          <circle r="5" fill="#60A5FA" filter="url(#glowFilter)">
-            <animateMotion dur="2.2s" repeatCount="indefinite" path="M 165 110 C 230 110, 260 75, 290 75" />
+          {/* Moving Data Packets */}
+          <circle r="5.5" fill="#714B67">
+            <animateMotion dur="2.1s" repeatCount="indefinite" path="M 165 110 C 230 110, 260 75, 290 75" />
           </circle>
-          <circle r="5" fill="#34D399" filter="url(#glowFilter)">
-            <animateMotion dur="2.4s" repeatCount="indefinite" path="M 430 75 C 480 75, 510 110, 555 110" />
+          <circle r="5.5" fill="#017E84">
+            <animateMotion dur="2.3s" repeatCount="indefinite" path="M 430 75 C 480 75, 510 110, 555 110" />
           </circle>
-          <circle r="4.5" fill="#FBBF24" filter="url(#glowFilter)">
-            <animateMotion dur="2.6s" repeatCount="indefinite" path="M 340 125 C 320 185, 260 195, 230 240" />
+          <circle r="5" fill="#D97706">
+            <animateMotion dur="2.5s" repeatCount="indefinite" path="M 340 120 C 320 185, 260 195, 230 240" />
           </circle>
-          <circle r="4.5" fill="#22D3EE" filter="url(#glowFilter)">
-            <animateMotion dur="2.1s" repeatCount="indefinite" path="M 605 155 C 585 205, 535 205, 500 240" />
+          <circle r="5" fill="#059669">
+            <animateMotion dur="2.0s" repeatCount="indefinite" path="M 605 155 C 585 205, 535 205, 500 240" />
           </circle>
-          <circle r="4.5" fill="#10B981" filter="url(#glowFilter)">
-            <animateMotion dur="1.9s" repeatCount="indefinite" path="M 305 285 L 425 285" />
+          <circle r="5" fill="#2563EB">
+            <animateMotion dur="1.8s" repeatCount="indefinite" path="M 305 285 L 425 285" />
           </circle>
 
-          {/* Pipeline Labels on Canvas */}
-          <g transform="translate(195, 65)">
-            <rect width="74" height="19" rx="9" fill="rgba(15, 23, 42, 0.9)" stroke="rgba(59, 130, 246, 0.4)" />
-            <text x="37" y="13" textAnchor="middle" fill="#93C5FD" fontSize="9.5" fontFamily="monospace" fontWeight="600">
-              BARCODE 8ms
+          {/* Callout Tags */}
+          <g transform="translate(192, 62)">
+            <rect width="80" height="20" rx="10" fill="#FDF2F8" stroke="#714B67" strokeWidth="1" />
+            <text x="40" y="13.5" textAnchor="middle" fill="#714B67" fontSize="9.5" fontFamily="monospace" fontWeight="700">
+              SCAN / SCALE
             </text>
           </g>
 
-          <g transform="translate(462, 65)">
-            <rect width="78" height="19" rx="9" fill="rgba(15, 23, 42, 0.9)" stroke="rgba(16, 185, 129, 0.4)" />
-            <text x="39" y="13" textAnchor="middle" fill="#6EE7B7" fontSize="9.5" fontFamily="monospace" fontWeight="600">
-              CHECKOUT 15ms
+          <g transform="translate(460, 62)">
+            <rect width="84" height="20" rx="10" fill="#F0FDFA" stroke="#017E84" strokeWidth="1" />
+            <text x="42" y="13.5" textAnchor="middle" fill="#017E84" fontSize="9.5" fontFamily="monospace" fontWeight="700">
+              PRICELIST OK
             </text>
           </g>
 
-          <g transform="translate(328, 262)">
-            <rect width="74" height="19" rx="9" fill="rgba(15, 23, 42, 0.9)" stroke="rgba(245, 158, 11, 0.4)" />
-            <text x="37" y="13" textAnchor="middle" fill="#FCD34D" fontSize="9.5" fontFamily="monospace" fontWeight="600">
-              ATOMIC SYNC
+          <g transform="translate(325, 260)">
+            <rect width="80" height="20" rx="10" fill="#EFF6FF" stroke="#2563EB" strokeWidth="1" />
+            <text x="40" y="13.5" textAnchor="middle" fill="#2563EB" fontSize="9.5" fontFamily="monospace" fontWeight="700">
+              STOCK.PICKING
             </text>
           </g>
 
-          {/* Render the 5 Interactive Nodes */}
+          {/* Interactive Nodes */}
           {HERO_NODES.map((node) => {
             const isSelected = node.id === selectedNodeId;
-            const boxWidth = 148;
+            const boxWidth = 152;
             const boxHeight = 88;
             const left = node.x - boxWidth / 2;
             const top = node.y - boxHeight / 2;
@@ -362,112 +319,105 @@ export function HeroArchitectureDiagram({ onLaunchPos }) {
                 onClick={() => setSelectedNodeId(node.id)}
                 style={{ cursor: "pointer" }}
               >
-                {/* Selection Pulse Halo */}
                 {isSelected && (
                   <rect
-                    x="-5"
-                    y="-5"
-                    width={boxWidth + 10}
-                    height={boxHeight + 10}
-                    rx="16"
+                    x="-4"
+                    y="-4"
+                    width={boxWidth + 8}
+                    height={boxHeight + 8}
+                    rx="14"
                     fill="none"
                     stroke={node.color}
                     strokeWidth="2"
-                    strokeOpacity="0.65"
                   >
                     <animate
                       attributeName="stroke-opacity"
-                      values="0.85;0.2;0.85"
-                      dur="1.8s"
+                      values="0.9;0.25;0.9"
+                      dur="1.6s"
                       repeatCount="indefinite"
                     />
                   </rect>
                 )}
 
-                {/* Card Body */}
                 <rect
                   width={boxWidth}
                   height={boxHeight}
-                  rx="12"
-                  fill={isSelected ? "#162238" : "#111A2E"}
-                  stroke={isSelected ? node.color : "rgba(148, 163, 184, 0.25)"}
-                  strokeWidth={isSelected ? "2" : "1.2"}
+                  rx="11"
+                  fill="#FFFFFF"
+                  stroke={isSelected ? node.color : "#CBD5E1"}
+                  strokeWidth={isSelected ? "2.2" : "1.4"}
                 />
 
-                {/* Top Accent Strip */}
+                {/* Top Color Bar */}
                 <rect
-                  x="12"
+                  x="0"
                   y="0"
-                  width={boxWidth - 24}
-                  height="3"
-                  rx="1.5"
+                  width={boxWidth}
+                  height="5"
+                  rx="3"
                   fill={node.color}
                 />
 
-                {/* Step Pill */}
+                {/* Step Badge */}
                 <rect
                   x="10"
-                  y="10"
+                  y="12"
                   width="36"
                   height="18"
-                  rx="6"
-                  fill="rgba(15, 23, 42, 0.85)"
-                  stroke={node.color}
-                  strokeWidth="1"
+                  rx="5"
+                  fill={`${node.color}15`}
                 />
                 <text
                   x="28"
-                  y="22.5"
+                  y="24"
                   textAnchor="middle"
                   fill={node.color}
                   fontSize="10"
                   fontFamily="monospace"
-                  fontWeight="700"
+                  fontWeight="800"
                 >
                   #{node.step}
                 </text>
 
-                {/* Latency Badge */}
                 <text
                   x={boxWidth - 10}
-                  y="22"
+                  y="24"
                   textAnchor="end"
-                  fill="#94A3B8"
+                  fill="#64748B"
                   fontSize="9.5"
                   fontFamily="monospace"
+                  fontWeight="700"
                 >
                   {node.latency}
                 </text>
 
-                {/* Title */}
                 <text
-                  x="12"
-                  y="46"
-                  fill="#F8FAFC"
+                  x="10"
+                  y="47"
+                  fill="#0F172A"
                   fontSize="11.5"
-                  fontWeight="700"
+                  fontWeight="800"
                 >
                   {node.title}
                 </text>
 
-                {/* Subtitle */}
                 <text
-                  x="12"
-                  y="63"
-                  fill="#94A3B8"
+                  x="10"
+                  y="62"
+                  fill="#64748B"
                   fontSize="9.8"
                 >
                   {node.subtitle}
                 </text>
 
-                {/* Bottom Status Bar */}
-                <circle cx="16" cy="76" r="3" fill={node.color} />
+                <circle cx="15" cy="76" r="3.5" fill={node.color} />
                 <text
-                  x="24"
+                  x="23"
                   y="79"
-                  fill="#CBD5E1"
-                  fontSize="9"
+                  fill="#334155"
+                  fontSize="9.2"
                   fontFamily="monospace"
+                  fontWeight="700"
                 >
                   {node.throughput}
                 </text>
@@ -475,45 +425,45 @@ export function HeroArchitectureDiagram({ onLaunchPos }) {
             );
           })}
 
-          {/* Bottom Legend Bar inside SVG */}
-          <g transform="translate(20, 354)">
-            <rect width="680" height="26" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(148, 163, 184, 0.14)" />
-            <text x="14" y="17" fill="#94A3B8" fontSize="10.5" fontFamily="monospace">
-              CLICK ANY NODE ABOVE TO INSPECT SUBSYSTEM TELEMETRY • ZERO-LATENCY LOCAL + CLOUD ARCHITECTURE
+          {/* Bottom Banner inside SVG */}
+          <g transform="translate(20, 348)">
+            <rect width="680" height="26" rx="7" fill="#F1F5F9" stroke="#CBD5E1" />
+            <text x="14" y="17" fill="#334155" fontSize="10.5" fontFamily="monospace" fontWeight="600">
+              ODOO 18 ENTERPRISE POS ARCHITECTURE • CLICK ANY NODE TO VIEW SUBSYSTEM FIELDS
             </text>
-            <text x="666" y="17" textAnchor="end" fill="#10B981" fontSize="10.5" fontFamily="monospace" fontWeight="700">
-              100% ONLINE READY
+            <text x="666" y="17" textAnchor="end" fill="#017E84" fontSize="10.5" fontFamily="monospace" fontWeight="800">
+              ACTIVE & SYNCED
             </text>
           </g>
         </svg>
       </div>
 
-      {/* Selected Node Inspector Drawer */}
-      <div className="pos-node-inspector" style={{ borderColor: activeNode.color }}>
+      {/* Node Inspector Footer */}
+      <div className="pos-node-inspector" style={{ borderTopColor: activeNode.color }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 320px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
               <span
                 style={{
                   background: activeNode.color,
-                  color: "#090D16",
+                  color: "#FFFFFF",
                   fontWeight: 800,
                   fontSize: "11px",
                   padding: "2px 8px",
-                  borderRadius: "6px",
+                  borderRadius: "5px",
                   fontFamily: "monospace",
                 }}
               >
-                SUBSYSTEM #{activeNode.step}
+                STEP #{activeNode.step}
               </span>
-              <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#F8FAFC" }}>
+              <h4 style={{ margin: 0, fontSize: "15.5px", fontWeight: 800, color: "#0F172A" }}>
                 {activeNode.title}
               </h4>
-              <span style={{ fontSize: "12px", color: "#94A3B8", fontFamily: "monospace" }}>
+              <span style={{ fontSize: "12px", color: "#64748B", fontFamily: "monospace" }}>
                 ({activeNode.subtitle})
               </span>
             </div>
-            <p style={{ margin: 0, fontSize: "13px", color: "#CBD5E1", lineHeight: 1.55 }}>
+            <p style={{ margin: 0, fontSize: "13px", color: "#334155", lineHeight: 1.55 }}>
               {activeNode.details}
             </p>
           </div>
@@ -521,10 +471,10 @@ export function HeroArchitectureDiagram({ onLaunchPos }) {
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             {activeNode.metrics.map((m, i) => (
               <div key={i} className="pos-metric-mini-card">
-                <div style={{ fontSize: "10px", color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div style={{ fontSize: "10px", color: "#64748B", textTransform: "uppercase", fontWeight: 700 }}>
                   {m.label}
                 </div>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#F8FAFC", fontFamily: "monospace", marginTop: "3px" }}>
+                <div style={{ fontSize: "12.5px", fontWeight: 800, color: "#0F172A", fontFamily: "monospace", marginTop: "3px" }}>
                   {m.value}
                 </div>
               </div>
@@ -549,7 +499,6 @@ export function InteractiveSystemDiagrams() {
 
   return (
     <div className="pos-system-diagrams-card">
-      {/* Diagram Mode Switcher */}
       <div className="pos-diagram-tabs">
         <button
           type="button"
@@ -557,7 +506,7 @@ export function InteractiveSystemDiagrams() {
           className={`pos-diagram-tab ${activeTab === "pipeline" ? "active" : ""}`}
         >
           <Zap size={15} />
-          <span>1. 0.2s Express Checkout Pipeline</span>
+          <span>1. Odoo POS Checkout Pipeline</span>
         </button>
         <button
           type="button"
@@ -565,7 +514,7 @@ export function InteractiveSystemDiagrams() {
           className={`pos-diagram-tab ${activeTab === "offline" ? "active" : ""}`}
         >
           <Database size={15} />
-          <span>2. Offline-First & Cloud Sync Engine</span>
+          <span>2. Offline-First & Pricelist Sync</span>
         </button>
         <button
           type="button"
@@ -573,91 +522,76 @@ export function InteractiveSystemDiagrams() {
           className={`pos-diagram-tab ${activeTab === "profit" ? "active" : ""}`}
         >
           <TrendingUp size={15} />
-          <span>3. Inventory, Returns & Profit Loop</span>
+          <span>3. Stock Moves, Refunds & Accounting</span>
         </button>
       </div>
 
-      {/* TAB 1: Express Checkout Pipeline */}
       {activeTab === "pipeline" && (
-        <div style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ padding: "22px", background: "#FFFFFF" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#F8FAFC" }}>
-                Real-Time Express Checkout Sequence (0.2s End-to-End)
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 800, color: "#0F172A" }}>
+                Odoo POS Express Order-to-Receipt Pipeline
               </h3>
-              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94A3B8" }}>
-                Watch how Pro General POS processes barcode scans, wholesale/retail pricing tiers, split tenders, and thermal receipts without page reloads.
+              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#475569" }}>
+                From Barcode / Electronic Scale scan to Numpad Qty/Discount adjustments, Pricelist application, and 80mm receipt generation.
               </p>
             </div>
-            <span className="pos-mono-badge" style={{ color: "#10B981", borderColor: "rgba(16,185,129,0.3)" }}>
-              ACTIVE STAGE: STEP 0{activeStepIndex + 1} / 05
+            <span className="pos-mono-badge" style={{ color: "#714B67", borderColor: "#714B67" }}>
+              ACTIVE STAGE: 0{activeStepIndex + 1} / 05
             </span>
           </div>
 
-          <svg viewBox="0 0 900 230" style={{ width: "100%", height: "auto", display: "block" }}>
-            <defs>
-              <linearGradient id="pipelineLine" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#3B82F6" />
-                <stop offset="50%" stopColor="#10B981" />
-                <stop offset="100%" stopColor="#8B5CF6" />
-              </linearGradient>
-            </defs>
-            <rect width="900" height="230" rx="14" fill="#0B111E" stroke="rgba(148,163,184,0.14)" />
-
-            {/* Connecting Backbone */}
-            <line x1="95" y1="105" x2="805" y2="105" stroke="rgba(148,163,184,0.2)" strokeWidth="4" />
+          <svg viewBox="0 0 900 220" style={{ width: "100%", height: "auto", display: "block" }}>
+            <rect width="900" height="220" rx="12" fill="#F8FAFC" stroke="#E2E8F0" />
+            <line x1="95" y1="98" x2="805" y2="98" stroke="#CBD5E1" strokeWidth="4" />
             <line
               x1="95"
-              y1="105"
+              y1="98"
               x2="805"
-              y2="105"
-              stroke="url(#pipelineLine)"
-              strokeWidth="4"
+              y2="98"
+              stroke="#714B67"
+              strokeWidth="3.5"
               strokeDasharray="10 8"
               className="pos-animated-dash"
             />
-
-            {/* Moving High-Speed Packet */}
-            <circle r="7" fill="#10B981">
-              <animateMotion dur="3.5s" repeatCount="indefinite" path="M 95 105 L 805 105" />
+            <circle r="7" fill="#017E84">
+              <animateMotion dur="3.4s" repeatCount="indefinite" path="M 95 98 L 805 98" />
             </circle>
 
             {[
-              { title: "Barcode / SKU Scan", sub: "Laser or Keyboard /", time: "0.02s", color: "#3B82F6", x: 95 },
-              { title: "Tier Price Lookup", sub: "Retail vs Wholesale", time: "0.04s", color: "#06B6D4", x: 272 },
-              { title: "Promo & Tax Math", sub: "Auto GST + Discounts", time: "0.06s", color: "#10B981", x: 450 },
-              { title: "Multi-Tender Split", sub: "Cash / Card / Credit", time: "0.12s", color: "#8B5CF6", x: 628 },
-              { title: "80mm Thermal Print", sub: "Stock & Z-Report Sync", time: "0.20s", color: "#F59E0B", x: 805 },
+              { title: "Scan / Weigh Item", sub: "Barcode or Scale (kg)", time: "Step 1", color: "#714B67", x: 95 },
+              { title: "Odoo Numpad Edit", sub: "Qty • %Disc • Price", time: "Step 2", color: "#017E84", x: 272 },
+              { title: "Pricelist & Fiscal", sub: "Public / VIP / B2B", time: "Step 3", color: "#059669", x: 450 },
+              { title: "Payment & Invoice", sub: "Cash / Card / Credit", time: "Step 4", color: "#D97706", x: 628 },
+              { title: "Receipt & Picking", sub: "80mm Print + Stock", time: "Step 5", color: "#2563EB", x: 805 },
             ].map((item, idx) => {
               const isCurrent = idx === activeStepIndex;
               return (
                 <g
                   key={idx}
-                  transform={`translate(${item.x}, 105)`}
+                  transform={`translate(${item.x}, 98)`}
                   onClick={() => setActiveStepIndex(idx)}
                   style={{ cursor: "pointer" }}
                 >
                   {isCurrent && (
-                    <circle r="42" fill="none" stroke={item.color} strokeWidth="2" strokeOpacity="0.6">
-                      <animate attributeName="r" values="34;46;34" dur="1.6s" repeatCount="indefinite" />
+                    <circle r="40" fill="none" stroke={item.color} strokeWidth="2">
+                      <animate attributeName="r" values="33;43;33" dur="1.5s" repeatCount="indefinite" />
                     </circle>
                   )}
                   <circle
-                    r="32"
-                    fill={isCurrent ? "#17253B" : "#111A2E"}
+                    r="31"
+                    fill="#FFFFFF"
                     stroke={item.color}
-                    strokeWidth={isCurrent ? "3" : "1.8"}
+                    strokeWidth={isCurrent ? "3.5" : "2"}
                   />
-                  <text y="-3" textAnchor="middle" fill="#F8FAFC" fontSize="12" fontWeight="800" fontFamily="monospace">
-                    0{idx + 1}
-                  </text>
-                  <text y="12" textAnchor="middle" fill={item.color} fontSize="10" fontFamily="monospace" fontWeight="700">
+                  <text y="4" textAnchor="middle" fill={item.color} fontSize="11.5" fontWeight="800" fontFamily="monospace">
                     {item.time}
                   </text>
-                  <text y="60" textAnchor="middle" fill="#F8FAFC" fontSize="12.5" fontWeight="700">
+                  <text y="56" textAnchor="middle" fill="#0F172A" fontSize="12.5" fontWeight="800">
                     {item.title}
                   </text>
-                  <text y="78" textAnchor="middle" fill="#94A3B8" fontSize="10.5">
+                  <text y="73" textAnchor="middle" fill="#64748B" fontSize="10.5">
                     {item.sub}
                   </text>
                 </g>
@@ -667,167 +601,59 @@ export function InteractiveSystemDiagrams() {
         </div>
       )}
 
-      {/* TAB 2: Offline-First & Cloud Sync Engine */}
       {activeTab === "offline" && (
-        <div style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#F8FAFC" }}>
-                Zero-Downtime Hybrid Offline-First + Vercel Edge Architecture
-              </h3>
-              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94A3B8" }}>
-                Even if internet connectivity drops in the middle of peak rush hour, Pro General POS continues ringing sales at 100% speed with local persistence.
-              </p>
-            </div>
-            <span className="pos-mono-badge" style={{ color: "#38BDF8" }}>
-              UPTIME GUARANTEE: 100.0% LOCAL + CLOUD
-            </span>
-          </div>
-
-          <svg viewBox="0 0 900 240" style={{ width: "100%", height: "auto", display: "block" }}>
-            <rect width="900" height="240" rx="14" fill="#0B111E" stroke="rgba(148,163,184,0.14)" />
-
-            {/* Left Node: Cashier Register UI */}
-            <g transform="translate(40, 45)">
-              <rect width="220" height="150" rx="12" fill="#111A2E" stroke="#3B82F6" strokeWidth="2" />
-              <text x="20" y="32" fill="#60A5FA" fontSize="11" fontFamily="monospace" fontWeight="700">
-                CLIENT TERMINAL LAYER
-              </text>
-              <text x="20" y="56" fill="#F8FAFC" fontSize="15" fontWeight="700">
-                React 18 + Next.js POS UI
-              </text>
-              <text x="20" y="80" fill="#94A3B8" fontSize="11.5">
-                • 60fps Instant Cart State
-              </text>
-              <text x="20" y="100" fill="#94A3B8" fontSize="11.5">
-                • Web Audio Scanner Synth
-              </text>
-              <text x="20" y="120" fill="#94A3B8" fontSize="11.5">
-                • 80mm Print Spooler Engine
-              </text>
-            </g>
-
-            {/* Center Node: Local Persistence Engine */}
-            <g transform="translate(340, 45)">
-              <rect width="220" height="150" rx="12" fill="#111A2E" stroke="#10B981" strokeWidth="2" />
-              <text x="20" y="32" fill="#34D399" fontSize="11" fontFamily="monospace" fontWeight="700">
-                OFFLINE-FIRST STORAGE ENGINE
-              </text>
-              <text x="20" y="56" fill="#F8FAFC" fontSize="15" fontWeight="700">
-                Persistent Local Vault
-              </text>
-              <text x="20" y="80" fill="#94A3B8" fontSize="11.5">
-                • Zero-Latency Read/Write
-              </text>
-              <text x="20" y="100" fill="#94A3B8" fontSize="11.5">
-                • Works 100% Without Wi-Fi
-              </text>
-              <text x="20" y="120" fill="#94A3B8" fontSize="11.5">
-                • 1-Click JSON/CSV Backup
-              </text>
-            </g>
-
-            {/* Right Node: Cloud & Multi-Branch Export */}
-            <g transform="translate(640, 45)">
-              <rect width="220" height="150" rx="12" fill="#111A2E" stroke="#8B5CF6" strokeWidth="2" />
-              <text x="20" y="32" fill="#C084FC" fontSize="11" fontFamily="monospace" fontWeight="700">
-                VERCEL + GITHUB DEPLOYMENT
-              </text>
-              <text x="20" y="56" fill="#F8FAFC" fontSize="15" fontWeight="700">
-                Global Edge & CI/CD
-              </text>
-              <text x="20" y="80" fill="#94A3B8" fontSize="11.5">
-                • Instant Global CDN Load
-              </text>
-              <text x="20" y="100" fill="#94A3B8" fontSize="11.5">
-                • GitHub Automated Builds
-              </text>
-              <text x="20" y="120" fill="#94A3B8" fontSize="11.5">
-                • Multi-Device Responsive
-              </text>
-            </g>
-
-            {/* Bi-directional Animated Pipes */}
-            <path d="M 260 105 L 340 105" stroke="#3B82F6" strokeWidth="3" strokeDasharray="6 6" className="pos-animated-dash" />
-            <path d="M 340 135 L 260 135" stroke="#10B981" strokeWidth="3" strokeDasharray="6 6" className="pos-animated-dash" />
-            <path d="M 560 105 L 640 105" stroke="#10B981" strokeWidth="3" strokeDasharray="6 6" className="pos-animated-dash" />
-            <path d="M 640 135 L 560 135" stroke="#8B5CF6" strokeWidth="3" strokeDasharray="6 6" className="pos-animated-dash" />
-
-            <circle r="5" fill="#60A5FA">
-              <animateMotion dur="1.4s" repeatCount="indefinite" path="M 260 105 L 340 105" />
-            </circle>
-            <circle r="5" fill="#34D399">
-              <animateMotion dur="1.4s" repeatCount="indefinite" path="M 340 135 L 260 135" />
-            </circle>
-            <circle r="5" fill="#C084FC">
-              <animateMotion dur="1.8s" repeatCount="indefinite" path="M 560 105 L 640 105" />
-            </circle>
+        <div style={{ padding: "22px", background: "#FFFFFF" }}>
+          <svg viewBox="0 0 900 220" style={{ width: "100%", height: "auto", display: "block" }}>
+            <rect width="900" height="220" rx="12" fill="#F8FAFC" stroke="#E2E8F0" />
+            {[
+              { x: 40, title: "Odoo POS Register UI", sub: "Numpad • Pricelists • Floating Orders", color: "#714B67", badge: "FRONT-OF-HOUSE" },
+              { x: 340, title: "Browser Local Vault", sub: "Works 100% Offline without Internet", color: "#017E84", badge: "ZERO-LATENCY CACHE" },
+              { x: 640, title: "Vercel & GitHub Cloud", sub: "Instant Global Edge Deployment", color: "#059669", badge: "PRODUCTION LIVE" },
+            ].map((b, i) => (
+              <g key={i} transform={`translate(${b.x}, 40)`}>
+                <rect width="220" height="140" rx="12" fill="#FFFFFF" stroke={b.color} strokeWidth="2" />
+                <rect width="220" height="6" rx="3" fill={b.color} />
+                <text x="18" y="34" fill={b.color} fontSize="10.5" fontFamily="monospace" fontWeight="800">
+                  {b.badge}
+                </text>
+                <text x="18" y="62" fill="#0F172A" fontSize="15" fontWeight="800">
+                  {b.title}
+                </text>
+                <text x="18" y="88" fill="#475569" fontSize="11.5">
+                  {b.sub}
+                </text>
+              </g>
+            ))}
+            <path d="M 260 110 L 340 110" stroke="#714B67" strokeWidth="3" strokeDasharray="6 6" className="pos-animated-dash" />
+            <path d="M 560 110 L 640 110" stroke="#017E84" strokeWidth="3" strokeDasharray="6 6" className="pos-animated-dash" />
           </svg>
         </div>
       )}
 
-      {/* TAB 3: Inventory, Returns & Profit Loop */}
       {activeTab === "profit" && (
-        <div style={{ padding: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#F8FAFC" }}>
-                Closed-Loop Inventory, Partial Return Restock & Net Profit Waterfall
-              </h3>
-              <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#94A3B8" }}>
-                Every purchase order, retail/wholesale invoice, customer credit payment, and item refund feeds directly into your real-time Net Margin & Z-Report.
-              </p>
-            </div>
-            <span className="pos-mono-badge" style={{ color: "#F59E0B" }}>
-              REAL-TIME COGS & MARGIN ENGINE
-            </span>
-          </div>
-
-          <svg viewBox="0 0 900 240" style={{ width: "100%", height: "auto", display: "block" }}>
-            <rect width="900" height="240" rx="14" fill="#0B111E" stroke="rgba(148,163,184,0.14)" />
-
+        <div style={{ padding: "22px", background: "#FFFFFF" }}>
+          <svg viewBox="0 0 900 220" style={{ width: "100%", height: "auto", display: "block" }}>
+            <rect width="900" height="220" rx="12" fill="#F8FAFC" stroke="#E2E8F0" />
             {[
-              { x: 35, y: 60, w: 175, title: "1. Supplier Stock-In", sub: "Purchase Orders + Cost Price", color: "#F59E0B", metric: "+Stock Qty" },
-              { x: 255, y: 60, w: 175, title: "2. Active SKU Vault", sub: "Barcode Labels & Expiry Alert", color: "#3B82F6", metric: "Live Valuation" },
-              { x: 475, y: 60, w: 175, title: "3. POS Sale / Return", sub: "Auto Deduct or Refund Restock", color: "#10B981", metric: "Gross Margin" },
-              { x: 695, y: 60, w: 170, title: "4. Shift Z-Report", sub: "Revenue - COGS - Expenses", color: "#06B6D4", metric: "Net Profit" },
-            ].map((box, i) => (
-              <g key={i} transform={`translate(${box.x}, ${box.y})`}>
-                <rect width={box.w} height="125" rx="12" fill="#111A2E" stroke={box.color} strokeWidth="2" />
-                <text x="16" y="28" fill={box.color} fontSize="10.5" fontFamily="monospace" fontWeight="700">
-                  {box.metric}
+              { x: 35, w: 185, title: "1. Purchase Order", sub: "Vendor Receipt → WH/Stock", color: "#D97706" },
+              { x: 255, w: 185, title: "2. Odoo Product Form", sub: "On-Hand • Forecasted • Tax", color: "#714B67" },
+              { x: 475, w: 185, title: "3. POS Order / Refund", sub: "Auto Stock Move & Credit Note", color: "#017E84" },
+              { x: 695, w: 170, title: "4. Session Closing", sub: "Cash Control & Z-Report", color: "#059669" },
+            ].map((b, i) => (
+              <g key={i} transform={`translate(${b.x}, 50)`}>
+                <rect width={b.w} height="120" rx="10" fill="#FFFFFF" stroke={b.color} strokeWidth="2" />
+                <rect width={b.w} height="5" rx="2.5" fill={b.color} />
+                <text x="14" y="45" fill="#0F172A" fontSize="13.5" fontWeight="800">
+                  {b.title}
                 </text>
-                <text x="16" y="55" fill="#F8FAFC" fontSize="13.5" fontWeight="700">
-                  {box.title}
-                </text>
-                <text x="16" y="77" fill="#94A3B8" fontSize="11">
-                  {box.sub}
-                </text>
-                <rect x="16" y="92" width={box.w - 32} height="18" rx="5" fill="rgba(15,23,42,0.9)" />
-                <text x={box.w / 2} y="104" textAnchor="middle" fill="#CBD5E1" fontSize="9.5" fontFamily="monospace">
-                  100% AUTOMATED
+                <text x="14" y="68" fill="#475569" fontSize="11">
+                  {b.sub}
                 </text>
               </g>
             ))}
-
-            {/* Forward Arrows */}
-            <path d="M 210 120 L 255 120" stroke="#F59E0B" strokeWidth="3" strokeDasharray="5 5" className="pos-animated-dash" />
-            <path d="M 430 120 L 475 120" stroke="#3B82F6" strokeWidth="3" strokeDasharray="5 5" className="pos-animated-dash" />
-            <path d="M 650 120 L 695 120" stroke="#10B981" strokeWidth="3" strokeDasharray="5 5" className="pos-animated-dash" />
-
-            {/* Return Restock Feedback Loop Arc */}
-            <path
-              d="M 562 60 C 562 18, 342 18, 342 60"
-              fill="none"
-              stroke="#EC4899"
-              strokeWidth="2.2"
-              strokeDasharray="6 6"
-              className="pos-animated-dash"
-            />
-            <rect x="385" y="14" width="135" height="18" rx="9" fill="#111A2E" stroke="#EC4899" />
-            <text x="452" y="26" textAnchor="middle" fill="#F472B6" fontSize="9.5" fontFamily="monospace" fontWeight="700">
-              AUTO-RESTOCK ON REFUND
-            </text>
+            <path d="M 220 110 L 255 110" stroke="#D97706" strokeWidth="3" strokeDasharray="5 5" className="pos-animated-dash" />
+            <path d="M 440 110 L 475 110" stroke="#714B67" strokeWidth="3" strokeDasharray="5 5" className="pos-animated-dash" />
+            <path d="M 660 110 L 695 110" stroke="#017E84" strokeWidth="3" strokeDasharray="5 5" className="pos-animated-dash" />
           </svg>
         </div>
       )}

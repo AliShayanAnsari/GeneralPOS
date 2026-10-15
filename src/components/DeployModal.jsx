@@ -8,9 +8,7 @@ import {
   CheckCircle2,
   Copy,
   Check,
-  Terminal,
   ExternalLink,
-  Download,
   Globe,
 } from "lucide-react";
 
@@ -42,7 +40,7 @@ npx vercel --prod --yes`;
     <div className="pos-modal-backdrop" onClick={onClose}>
       <div
         className="pos-modal-card"
-        style={{ maxWidth: "680px", width: "95%" }}
+        style={{ maxWidth: "660px", width: "95%" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="pos-modal-header">
@@ -51,22 +49,22 @@ npx vercel --prod --yes`;
               style={{
                 width: "36px",
                 height: "36px",
-                borderRadius: "10px",
-                background: "rgba(59, 130, 246, 0.16)",
-                border: "1px solid rgba(59, 130, 246, 0.4)",
+                borderRadius: "9px",
+                background: "#F5F3FF",
+                border: "1px solid #714B67",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Rocket size={18} color="#60A5FA" />
+              <Rocket size={18} color="#714B67" />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 800, color: "#F8FAFC" }}>
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 800, color: "#0F172A" }}>
                 GitHub & Vercel Cloud Deployment Hub
               </h3>
-              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94A3B8" }}>
-                Pro General POS is pre-configured with Git, GitHub Actions CI/CD, and vercel.json
+              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748B" }}>
+                Pushed to AliShayanAnsari/GeneralPOS • Ready for 1-Click Vercel Import
               </p>
             </div>
           </div>
@@ -76,46 +74,34 @@ npx vercel --prod --yes`;
         </div>
 
         <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "78vh", overflowY: "auto" }}>
-          {/* Status Cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "10px" }}>
-            <div className="pos-mini-stat-box" style={{ borderColor: "rgba(16, 185, 129, 0.35)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#10B981", fontSize: "12px", fontWeight: 700 }}>
+            <div className="pos-mini-stat-box">
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#059669", fontSize: "12px", fontWeight: 700 }}>
                 <CheckCircle2 size={14} />
-                <span>Git Repository Initialized</span>
+                <span>GitHub Repo Live</span>
               </div>
-              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
-                Branch: <code style={{ color: "#F8FAFC" }}>main</code> • Clean Commit Ready
+              <div style={{ fontSize: "11px", color: "#475569", marginTop: "4px" }}>
+                Repo: <strong>AliShayanAnsari/GeneralPOS</strong>
               </div>
             </div>
 
-            <div className="pos-mini-stat-box" style={{ borderColor: "rgba(59, 130, 246, 0.35)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#60A5FA", fontSize: "12px", fontWeight: 700 }}>
+            <div className="pos-mini-stat-box">
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#714B67", fontSize: "12px", fontWeight: 700 }}>
                 <CheckCircle2 size={14} />
-                <span>Vercel Edge Config Ready</span>
+                <span>Vercel Edge Ready</span>
               </div>
-              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
-                Includes <code style={{ color: "#F8FAFC" }}>vercel.json</code> & Next.js Build
-              </div>
-            </div>
-
-            <div className="pos-mini-stat-box" style={{ borderColor: "rgba(139, 92, 246, 0.35)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#C084FC", fontSize: "12px", fontWeight: 700 }}>
-                <CheckCircle2 size={14} />
-                <span>GitHub Actions CI/CD</span>
-              </div>
-              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "4px" }}>
-                <code style={{ color: "#F8FAFC" }}>.github/workflows/deploy.yml</code>
+              <div style={{ fontSize: "11px", color: "#475569", marginTop: "4px" }}>
+                Includes <strong>vercel.json</strong> & Next.js Build
               </div>
             </div>
           </div>
 
-          {/* Step 1: GitHub */}
           <div className="pos-deploy-step-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <GitBranch size={16} color="#60A5FA" />
-                <span style={{ fontWeight: 700, fontSize: "14px", color: "#F8FAFC" }}>
-                  Step 1: Push Pre-Built Git Repository to Your GitHub
+                <GitBranch size={16} color="#714B67" />
+                <span style={{ fontWeight: 700, fontSize: "14px", color: "#0F172A" }}>
+                  Step 1: Live GitHub Repository
                 </span>
               </div>
               <button
@@ -124,20 +110,19 @@ npx vercel --prod --yes`;
                 className="pos-btn-secondary"
                 style={{ padding: "5px 10px", fontSize: "11.5px" }}
               >
-                {copiedKey === "git" ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
-                <span>{copiedKey === "git" ? "Copied!" : "Copy Commands"}</span>
+                {copiedKey === "git" ? <Check size={13} color="#059669" /> : <Copy size={13} />}
+                <span>{copiedKey === "git" ? "Copied!" : "Copy"}</span>
               </button>
             </div>
             <pre className="pos-code-pre">{gitCommands}</pre>
           </div>
 
-          {/* Step 2: Vercel */}
           <div className="pos-deploy-step-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Rocket size={16} color="#10B981" />
-                <span style={{ fontWeight: 700, fontSize: "14px", color: "#F8FAFC" }}>
-                  Step 2: 1-Click Deploy to Vercel Production
+                <Rocket size={16} color="#017E84" />
+                <span style={{ fontWeight: 700, fontSize: "14px", color: "#0F172A" }}>
+                  Step 2: 1-Click Deploy on Vercel
                 </span>
               </div>
               <button
@@ -146,18 +131,18 @@ npx vercel --prod --yes`;
                 className="pos-btn-secondary"
                 style={{ padding: "5px 10px", fontSize: "11.5px" }}
               >
-                {copiedKey === "vercel" ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
+                {copiedKey === "vercel" ? <Check size={13} color="#059669" /> : <Copy size={13} />}
                 <span>{copiedKey === "vercel" ? "Copied!" : "Copy CLI Command"}</span>
               </button>
             </div>
             <pre className="pos-code-pre">{vercelCommands}</pre>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
               <a
-                href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAliShayanAnsari%2FGeneralPOS"
+                href="https://vercel.com/new/import?s=https%3A%2F%2Fgithub.com%2FAliShayanAnsari%2FGeneralPOS"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="pos-btn-primary"
-                style={{ textDecoration: "none", fontSize: "12.5px", padding: "8px 14px" }}
+                style={{ textDecoration: "none", fontSize: "12.5px", padding: "9px 14px" }}
               >
                 <Globe size={14} />
                 <span>1-Click Deploy GeneralPOS on Vercel</span>
@@ -168,7 +153,7 @@ npx vercel --prod --yes`;
                 target="_blank"
                 rel="noopener noreferrer"
                 className="pos-btn-secondary"
-                style={{ textDecoration: "none", fontSize: "12.5px", padding: "8px 14px" }}
+                style={{ textDecoration: "none", fontSize: "12.5px", padding: "9px 14px" }}
               >
                 <GitBranch size={14} />
                 <span>Open GitHub Repo (AliShayanAnsari/GeneralPOS)</span>
@@ -180,7 +165,7 @@ npx vercel --prod --yes`;
 
         <div className="pos-modal-footer">
           <button type="button" onClick={onClose} className="pos-btn-primary">
-            Done & Return to Pro General POS
+            Close
           </button>
         </div>
       </div>

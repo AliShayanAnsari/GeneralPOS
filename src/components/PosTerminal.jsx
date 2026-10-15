@@ -27,25 +27,28 @@ import {
   AlertTriangle,
   RotateCcw,
   Download,
-  Upload,
   Volume2,
   VolumeX,
   Home,
   GitBranch,
   Tag,
-  Sparkles,
   X,
   Edit3,
-  ArrowUpRight,
+  Info,
+  Scale,
+  MessageSquare,
   Layers,
-  ShieldCheck,
-  Clock,
-  Filter,
+  Delete,
+  Lock,
+  Grid,
+  ArrowRightLeft,
 } from "lucide-react";
 import {
   PRODUCT_CATEGORIES,
   CURRENCY_OPTIONS,
   PROMO_CODES,
+  ODOO_PRICELISTS,
+  ODOO_FISCAL_POSITIONS,
 } from "../data/initialData";
 import { posSound } from "../utils/sound";
 import {
@@ -54,7 +57,7 @@ import {
 } from "./AnimatedDiagrams";
 
 // Helper to render a crisp SVG Code-128 style barcode for receipts & shelf labels
-function SvgBarcode({ value = "8901023001014", width = 180, height = 44 }) {
+function SvgBarcode({ value = "8901023001014", width = 180, height = 42 }) {
   const bars = useMemo(() => {
     const str = String(value || "8901023001014");
     const result = [];
@@ -85,7 +88,7 @@ function SvgBarcode({ value = "8901023001014", width = 180, height = 44 }) {
             y={4}
             width={barWidth}
             height={height - 6}
-            fill="#090D16"
+            fill="#0F172A"
           />
         );
       })}
@@ -93,7 +96,7 @@ function SvgBarcode({ value = "8901023001014", width = 180, height = 44 }) {
         x={width / 2}
         y={height + 12}
         textAnchor="middle"
-        fill="#090D16"
+        fill="#0F172A"
         fontSize="10"
         fontFamily="monospace"
         fontWeight="700"
@@ -131,7 +134,7 @@ function SvgQrCode({ payload = "PRO-GENERAL-POS" }) {
   }, [payload]);
 
   return (
-    <svg viewBox="0 0 170 170" style={{ width: "150px", height: "150px", margin: "0 auto", display: "block" }}>
+    <svg viewBox="0 0 170 170" style={{ width: "145px", height: "145px", margin: "0 auto", display: "block", border: "1px solid #E2E8F0", borderRadius: "10px" }}>
       <rect width="170" height="170" rx="10" fill="#FFFFFF" />
       {cells.map((cell, idx) =>
         cell.on ? (
@@ -142,7 +145,7 @@ function SvgQrCode({ payload = "PRO-GENERAL-POS" }) {
             width="8.5"
             height="8.5"
             rx="1.5"
-            fill="#090D16"
+            fill="#0F172A"
           />
         ) : null
       )}
@@ -159,7 +162,6 @@ export default function PosTerminal({
   customers,
   setCustomers,
   suppliers,
-  setSuppliers,
   orders,
   setOrders,
   expenses,
@@ -170,15 +172,20 @@ export default function PosTerminal({
   onOpenDeployModal,
   onResetDemoData,
 }) {
-  // Navigation module state
+  // Active Top Module
   const [activeModule, setActiveModule] = useState("pos"); // pos | inventory | orders | customers | suppliers | drawer | analytics | settings
 
   // POS Register State
   const [searchQuery, setSearchQuery] = useState("");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [pricingMode, setPricingMode] = useState("retail"); // "retail" | "wholesale"
+
+  // Odoo Pricelist & Fiscal Position
+  const [selectedPricelistId, setSelectedPricelistId] = useState("pl-public");
+  const [selectedFiscalId, setSelectedFiscalId] = useState("fp-standard");
   const [selectedCustomerId, setSelectedCustomerId] = useState("cust-walkin");
+
+  // Cart & Selected Orderline for Odoo Numpad
   const [cart, setCart] = useState([
     {
       id: "prd-101",
@@ -187,10 +194,12 @@ export default function PosTerminal({
       barcode: "8901023001014",
       retailPrice: 4.5,
       wholesalePrice: 3.6,
+      customUnitPrice: null,
       costPrice: 2.4,
-      unit: "btl",
+      unit: "Units",
       qty: 2,
       itemDiscountPercent: 0,
+      customerNote: "",
     },
     {
       id: "prd-201",
@@ -199,31 +208,54 @@ export default function PosTerminal({
       barcode: "8901023002011",
       retailPrice: 16.5,
       wholesalePrice: 13.8,
+      customUnitPrice: null,
       costPrice: 10.2,
-      unit: "btl",
+      unit: "Units",
       qty: 1,
       itemDiscountPercent: 0,
+      customerNote: "",
     },
   ]);
+  const [selectedLineId, setSelectedLineId] = useState("prd-101");
+
+  // Odoo Numpad Mode: "qty" | "disc" | "price"
+  const [numpadMode, setNumpadMode] = useState("qty");
+  const [numpadBuffer, setNumpadBuffer] = useState("");
+
+  // Odoo Modals on Register
+  const [infoModalProduct, setInfoModalProduct] = useState(null);
+  const [scaleModalProduct, setScaleModalProduct] = useState(null);
+  const [scaleWeightKg, setScaleWeightKg] = useState(0.75);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [pricelistModalOpen, setPricelistModalOpen] = useState(false);
+  const [cashInOutModalOpen, setCashInOutModalOpen] = useState(false);
+  const [cashMoveType, setCashMoveType] = useState("Cash Out"); // "Cash In" | "Cash Out"
+  const [cashMoveAmount, setCashMoveAmount] = useState("");
+  const [cashMoveReason, setCashMoveReason] = useState("");
+  const [closeSessionModalOpen, setCloseSessionModalOpen] = useState(false);
+  const [countedCashClosing, setCountedCashClosing] = useState("");
+
+  // Promo & Discounts
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
-  const [manualDiscountValue, setManualDiscountValue] = useState(0);
-  const [taxEnabled, setTaxEnabled] = useState(true);
   const [lastScannedBanner, setLastScannedBanner] = useState(null);
 
-  // Modals in POS Register
+  // Payment Screen Modal
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("Cash"); // Cash | Card | Mobile QR Wallet | Customer Credit | Split (Cash + Card)
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [cashTendered, setCashTendered] = useState("");
   const [splitCashAmount, setSplitCashAmount] = useState("");
+  const [generateFormalInvoice, setGenerateFormalInvoice] = useState(true);
   const [orderNote, setOrderNote] = useState("");
   const [activeReceiptOrder, setActiveReceiptOrder] = useState(null);
   const [showParkedDrawer, setShowParkedDrawer] = useState(false);
 
-  // Inventory Module State
+  // Odoo Product Form Sheet Modal (Inventory Module)
   const [invSearch, setInvSearch] = useState("");
-  const [invStockFilter, setInvStockFilter] = useState("all"); // all | low | out
+  const [invStockFilter, setInvStockFilter] = useState("all");
   const [editingProduct, setEditingProduct] = useState(null);
+  const [productFormTab, setProductFormTab] = useState("general"); // general | pos | inventory
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [barcodeLabelProduct, setBarcodeLabelProduct] = useState(null);
 
@@ -237,6 +269,9 @@ export default function PosTerminal({
     name: "",
     phone: "",
     email: "",
+    address: "",
+    vatNumber: "",
+    pricelistId: "pl-public",
     tier: "VIP Gold",
     creditLimit: 500,
     notes: "",
@@ -244,14 +279,14 @@ export default function PosTerminal({
   const [settlingCustomer, setSettlingCustomer] = useState(null);
   const [settleAmount, setSettleAmount] = useState("");
 
-  // Suppliers & Purchase Order State
+  // Suppliers & Purchase Orders
   const [stockInProductId, setStockInProductId] = useState(
     products[0]?.id || "prd-101"
   );
   const [stockInQty, setStockInQty] = useState(25);
   const [stockInHistory, setStockInHistory] = useState([
     {
-      id: "PO-2026-881",
+      id: "PO/2026/0081",
       productName: "Artisan Cold Brew Coffee 330ml",
       supplier: "Prime Beverage Co.",
       qty: 40,
@@ -261,13 +296,6 @@ export default function PosTerminal({
     },
   ]);
 
-  // Expenses & Cash Drawer State
-  const [expenseTitle, setExpenseTitle] = useState("");
-  const [expenseCategory, setExpenseCategory] = useState("Store Supplies");
-  const [expenseAmount, setExpenseAmount] = useState("");
-  const [actualCountedCash, setActualCountedCash] = useState("");
-
-  // Notification Toast
   const [toast, setToast] = useState(null);
   const searchInputRef = useRef(null);
 
@@ -275,53 +303,42 @@ export default function PosTerminal({
     setToast({ message, type });
     setTimeout(() => {
       setToast((prev) => (prev?.message === message ? null : prev));
-    }, 3200);
+    }, 3000);
   };
 
-  // Sync sound setting
   useEffect(() => {
     posSound.enabled = Boolean(storeSettings?.enableSoundEffects);
   }, [storeSettings?.enableSoundEffects]);
 
-  // Keyboard shortcuts F1-F9 and "/" for search
+  // Reset numpad buffer when switching selected line or numpad mode
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "F1") {
-        e.preventDefault();
-        setActiveModule("pos");
-      } else if (e.key === "F2") {
-        e.preventDefault();
-        setActiveModule("pos");
-        searchInputRef.current?.focus();
-      } else if (e.key === "F3") {
-        e.preventDefault();
-        setActiveModule("inventory");
-      } else if (e.key === "F4") {
-        e.preventDefault();
-        setActiveModule("orders");
-      } else if (e.key === "F5") {
-        e.preventDefault();
-        setActiveModule("customers");
-      } else if (e.key === "F6") {
-        e.preventDefault();
-        setActiveModule("suppliers");
-      } else if (e.key === "F7") {
-        e.preventDefault();
-        setActiveModule("drawer");
-      } else if (e.key === "F8") {
-        e.preventDefault();
-        setActiveModule("analytics");
-      } else if (e.key === "F9") {
-        e.preventDefault();
-        setActiveModule("settings");
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    setNumpadBuffer("");
+  }, [selectedLineId, numpadMode]);
+
+  const activePricelist =
+    ODOO_PRICELISTS.find((p) => p.id === selectedPricelistId) ||
+    ODOO_PRICELISTS[0];
+  const activeFiscal =
+    ODOO_FISCAL_POSITIONS.find((f) => f.id === selectedFiscalId) ||
+    ODOO_FISCAL_POSITIONS[0];
+  const activeCustomer =
+    customers.find((c) => c.id === selectedCustomerId) || customers[0];
 
   const currency = storeSettings?.currency || "$";
   const formatMoney = (val) => `${currency}${Number(val || 0).toFixed(2)}`;
+
+  // Helper to get active unit price for an item based on Odoo Pricelist + custom override
+  const getEffectiveUnitPrice = (item) => {
+    if (item.customUnitPrice !== null && item.customUnitPrice !== undefined) {
+      return Number(item.customUnitPrice);
+    }
+    const base =
+      activePricelist.mode === "wholesale"
+        ? item.wholesalePrice
+        : item.retailPrice;
+    const afterPl = base * (1 - (activePricelist.discountPct || 0) / 100);
+    return Number(afterPl.toFixed(2));
+  };
 
   // Filtered products for POS grid
   const filteredPosProducts = useMemo(() => {
@@ -338,21 +355,29 @@ export default function PosTerminal({
     });
   }, [products, selectedCategory, searchQuery]);
 
-  // Add item to cart
-  const addToCart = (product, viaScanner = false) => {
+  // Add item to cart (or open Electronic Scale if product.toWeight is true)
+  const addToCart = (product, viaScanner = false, customQty = null) => {
+    if (product.toWeight && customQty === null && !viaScanner) {
+      setScaleModalProduct(product);
+      setScaleWeightKg(0.75);
+      return;
+    }
+
     if (product.stock <= 0) {
       posSound.playErrorBeep();
       showToast(`Out of stock: ${product.name}`, "error");
       return;
     }
 
+    const qtyToAdd = customQty !== null ? Number(customQty) : 1;
     posSound.playScanBeep();
+
     if (viaScanner) {
       setLastScannedBanner({
         name: product.name,
         barcode: product.barcode,
         price:
-          pricingMode === "wholesale"
+          activePricelist.mode === "wholesale"
             ? product.wholesalePrice
             : product.retailPrice,
       });
@@ -361,15 +386,16 @@ export default function PosTerminal({
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        if (existing.qty + 1 > product.stock) {
+        const nextQty = Number((existing.qty + qtyToAdd).toFixed(3));
+        if (nextQty > product.stock) {
           showToast(
-            `Maximum available stock (${product.stock}) reached for ${product.name}`,
+            `Max available On-Hand stock (${product.stock}) reached`,
             "warning"
           );
           return prev;
         }
         return prev.map((item) =>
-          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
+          item.id === product.id ? { ...item, qty: nextQty } : item
         );
       }
       return [
@@ -381,16 +407,81 @@ export default function PosTerminal({
           barcode: product.barcode,
           retailPrice: product.retailPrice,
           wholesalePrice: product.wholesalePrice,
+          customUnitPrice: null,
           costPrice: product.costPrice,
-          unit: product.unit,
-          qty: 1,
+          unit: product.unit || "Units",
+          qty: qtyToAdd,
           itemDiscountPercent: 0,
+          customerNote: "",
         },
       ];
     });
+    setSelectedLineId(product.id);
+    setNumpadBuffer("");
   };
 
-  // Handle physical or typed barcode scan
+  // Handle Odoo Numpad Key Press
+  const handleNumpadKey = (key) => {
+    if (!selectedLineId || cart.length === 0) {
+      showToast("Select an orderline in the ticket first", "warning");
+      return;
+    }
+    posSound.playScanBeep();
+
+    if (key === "BACKSPACE") {
+      const nextBuf = numpadBuffer.slice(0, -1);
+      setNumpadBuffer(nextBuf);
+      applyNumpadValue(nextBuf === "" ? null : Number(nextBuf));
+      return;
+    }
+
+    if (key === "+/-") {
+      if (numpadMode === "qty") {
+        setCart((prev) =>
+          prev.map((item) =>
+            item.id === selectedLineId ? { ...item, qty: item.qty * -1 } : item
+          )
+        );
+      }
+      return;
+    }
+
+    if (key === "." && numpadBuffer.includes(".")) return;
+
+    const nextBuf = `${numpadBuffer}${key}`;
+    setNumpadBuffer(nextBuf);
+    const parsed = parseFloat(nextBuf);
+    if (!Number.isNaN(parsed)) {
+      applyNumpadValue(parsed);
+    }
+  };
+
+  const applyNumpadValue = (val) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.id !== selectedLineId) return item;
+          if (numpadMode === "qty") {
+            if (val === null || val === 0) return { ...item, qty: 1 };
+            return { ...item, qty: val };
+          }
+          if (numpadMode === "disc") {
+            const clamped = Math.max(0, Math.min(100, val || 0));
+            return { ...item, itemDiscountPercent: clamped };
+          }
+          if (numpadMode === "price") {
+            return {
+              ...item,
+              customUnitPrice: val === null ? null : Math.max(0, val),
+            };
+          }
+          return item;
+        })
+        .filter(Boolean)
+    );
+  };
+
+  // Barcode submit
   const handleBarcodeSubmit = (e) => {
     e.preventDefault();
     const code = barcodeInput.trim();
@@ -406,17 +497,16 @@ export default function PosTerminal({
       setBarcodeInput("");
     } else {
       posSound.playErrorBeep();
-      showToast(`No SKU/Barcode matched "${code}"`, "error");
+      showToast(`Barcode/SKU "${code}" not found in Odoo catalog`, "error");
     }
   };
 
-  // Simulate laser barcode scan for instant demo delight
   const handleSimulateBarcodeScan = () => {
     const inStockItems = products.filter((p) => p.stock > 0);
     if (inStockItems.length === 0) return;
     const randomProduct =
       inStockItems[Math.floor(Math.random() * inStockItems.length)];
-    addToCart(randomProduct, true);
+    addToCart(randomProduct, true, 1);
     showToast(
       `Scanned [${randomProduct.barcode}] ${randomProduct.name}`,
       "success"
@@ -424,29 +514,15 @@ export default function PosTerminal({
   };
 
   const updateCartQty = (id, delta) => {
-    const product = products.find((p) => p.id === id);
     setCart((prev) =>
       prev
         .map((item) => {
           if (item.id !== id) return item;
-          const nextQty = item.qty + delta;
+          const nextQty = Number((item.qty + delta).toFixed(3));
           if (nextQty <= 0) return null;
-          if (product && nextQty > product.stock) {
-            showToast(`Only ${product.stock} units available in stock`, "warning");
-            return item;
-          }
           return { ...item, qty: nextQty };
         })
         .filter(Boolean)
-    );
-  };
-
-  const updateItemDiscount = (id, percent) => {
-    const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
-    setCart((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, itemDiscountPercent: clamped } : item
-      )
     );
   };
 
@@ -460,15 +536,14 @@ export default function PosTerminal({
     let lineDiscountTotal = 0;
 
     cart.forEach((item) => {
-      const unitPrice =
-        pricingMode === "wholesale" ? item.wholesalePrice : item.retailPrice;
+      const unitPrice = getEffectiveUnitPrice(item);
       const lineGross = unitPrice * item.qty;
       const lineDisc = lineGross * ((item.itemDiscountPercent || 0) / 100);
       rawSubtotal += lineGross;
       lineDiscountTotal += lineDisc;
     });
 
-    const afterLineSubtotal = Math.max(0, rawSubtotal - lineDiscountTotal);
+    const afterLineSubtotal = rawSubtotal - lineDiscountTotal;
 
     let promoDiscount = 0;
     if (appliedPromo) {
@@ -479,15 +554,9 @@ export default function PosTerminal({
       }
     }
 
-    const totalDiscount = Math.min(
-      rawSubtotal,
-      lineDiscountTotal + promoDiscount + (Number(manualDiscountValue) || 0)
-    );
-
-    const taxableAmount = Math.max(0, rawSubtotal - totalDiscount);
-    const effectiveTaxRate = taxEnabled
-      ? Number(storeSettings?.taxRate || 0)
-      : 0;
+    const totalDiscount = lineDiscountTotal + promoDiscount;
+    const taxableAmount = rawSubtotal - totalDiscount;
+    const effectiveTaxRate = activeFiscal.rate;
     const taxAmount = taxableAmount * (effectiveTaxRate / 100);
     const grandTotal = taxableAmount + taxAmount;
 
@@ -496,18 +565,10 @@ export default function PosTerminal({
       discountAmount: totalDiscount,
       taxAmount,
       grandTotal,
-      totalItems: cart.reduce((acc, i) => acc + i.qty, 0),
+      totalItems: cart.reduce((acc, i) => acc + Math.abs(i.qty), 0),
     };
-  }, [
-    cart,
-    pricingMode,
-    appliedPromo,
-    manualDiscountValue,
-    taxEnabled,
-    storeSettings?.taxRate,
-  ]);
+  }, [cart, activePricelist, appliedPromo, activeFiscal]);
 
-  // Apply Promo Code
   const handleApplyPromo = () => {
     const code = promoCodeInput.trim().toUpperCase();
     if (!code) return;
@@ -515,69 +576,60 @@ export default function PosTerminal({
     if (found) {
       setAppliedPromo(found);
       posSound.playScanBeep();
-      showToast(`Promo ${found.code} applied (${found.description})`, "success");
+      showToast(`Applied Coupon ${found.code} (${found.description})`, "success");
     } else {
       posSound.playErrorBeep();
-      showToast(`Invalid Promo Code "${code}". Try WELCOME10 or VIP15`, "error");
+      showToast(`Invalid Coupon "${code}". Try ODOO20 or WELCOME10`, "error");
     }
   };
 
-  // Park / Hold Current Bill
+  // Hold / Floating Order
   const handleHoldBill = () => {
     if (cart.length === 0) {
-      showToast("Cart is empty — add items before holding a bill", "warning");
+      showToast("Order is empty", "warning");
       return;
     }
-    const customer =
-      customers.find((c) => c.id === selectedCustomerId) || customers[0];
     const parked = {
-      id: `HOLD-${Date.now().toString().slice(-4)}`,
+      id: `Order 000${parkedBills.length + 2}`,
       timestamp: new Date().toISOString(),
-      customerName: customer.name,
-      customerId: customer.id,
-      pricingMode,
+      customerName: activeCustomer.name,
+      customerId: activeCustomer.id,
+      pricelistId: selectedPricelistId,
       cart,
       total: cartSummary.grandTotal,
     };
     setParkedBills((prev) => [parked, ...prev]);
     setCart([]);
     setAppliedPromo(null);
-    setManualDiscountValue(0);
-    showToast(`Bill ${parked.id} parked (${customer.name})`, "success");
+    showToast(`${parked.id} parked in Floating Orders`, "success");
   };
 
   const handleRecallBill = (parked) => {
     setCart(parked.cart);
     setSelectedCustomerId(parked.customerId);
-    setPricingMode(parked.pricingMode || "retail");
+    if (parked.pricelistId) setSelectedPricelistId(parked.pricelistId);
     setParkedBills((prev) => prev.filter((b) => b.id !== parked.id));
     setShowParkedDrawer(false);
     posSound.playScanBeep();
-    showToast(`Recalled parked bill ${parked.id}`, "success");
+    showToast(`Restored ${parked.id}`, "success");
   };
 
-  // Complete Checkout Transaction
+  // Complete Odoo Payment
   const handleCompleteSale = () => {
     if (cart.length === 0) return;
-    const customer =
-      customers.find((c) => c.id === selectedCustomerId) || customers[0];
 
-    // Check Credit Limit if paying on Customer Credit
     if (paymentMethod === "Customer Credit") {
-      if (customer.id === "cust-walkin") {
+      if (activeCustomer.id === "cust-walkin") {
         posSound.playErrorBeep();
-        showToast(
-          "Please select a registered customer to use Credit Ledger checkout.",
-          "error"
-        );
+        showToast("Please select a registered Partner/Customer for Credit Account.", "error");
         return;
       }
-      const projectedCredit = customer.creditBalance + cartSummary.grandTotal;
-      if (projectedCredit > customer.creditLimit) {
+      const projectedCredit = activeCustomer.creditBalance + cartSummary.grandTotal;
+      if (projectedCredit > activeCustomer.creditLimit) {
         posSound.playErrorBeep();
         showToast(
-          `Credit limit exceeded! Available credit: ${formatMoney(
-            Math.max(0, customer.creditLimit - customer.creditBalance)
+          `Credit limit exceeded! Available: ${formatMoney(
+            Math.max(0, activeCustomer.creditLimit - activeCustomer.creditBalance)
           )}`,
           "error"
         );
@@ -590,42 +642,36 @@ export default function PosTerminal({
         ? Number(cashTendered) || cartSummary.grandTotal
         : cartSummary.grandTotal;
 
-    if (paymentMethod === "Cash" && tenderedNum < cartSummary.grandTotal - 0.01) {
-      posSound.playErrorBeep();
-      showToast("Cash tendered is less than the Grand Total", "error");
-      return;
-    }
-
     const changeDue =
       paymentMethod === "Cash"
         ? Math.max(0, tenderedNum - cartSummary.grandTotal)
         : 0;
 
+    const orderNum = 1000 + orders.length + 1;
     const newOrder = {
-      id: `INV-2026-${1000 + orders.length + 1}`,
+      id: `Order 00014-001-${orderNum}`,
+      invoiceRef: generateFormalInvoice ? `INV/2026/${orderNum}` : "Receipt Only",
       timestamp: new Date().toISOString(),
-      cashier: `${currentUser?.name || "Alex Morgan"} (${
-        currentUser?.role || "Store Manager"
-      })`,
-      customerName: customer.name,
-      customerId: customer.id,
-      pricingMode,
+      cashier: currentUser?.name || "Alex Morgan",
+      customerName: activeCustomer.name,
+      customerId: activeCustomer.id,
+      pricelistName: activePricelist.name,
+      fiscalPosition: activeFiscal.name,
+      pricingMode: activePricelist.mode,
       paymentMethod,
-      status: "Completed",
+      isInvoiced: generateFormalInvoice,
+      status: generateFormalInvoice ? "Invoiced" : "Paid",
       note: orderNote,
-      items: cart.map((item) => {
-        const unitPrice =
-          pricingMode === "wholesale" ? item.wholesalePrice : item.retailPrice;
-        return {
-          id: item.id,
-          name: item.name,
-          sku: item.sku,
-          price: unitPrice,
-          costPrice: item.costPrice,
-          qty: item.qty,
-          discount: item.itemDiscountPercent || 0,
-        };
-      }),
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        price: getEffectiveUnitPrice(item),
+        costPrice: item.costPrice,
+        qty: item.qty,
+        discount: item.itemDiscountPercent || 0,
+        customerNote: item.customerNote || "",
+      })),
       subtotal: cartSummary.subtotal,
       discountAmount: cartSummary.discountAmount,
       taxAmount: cartSummary.taxAmount,
@@ -634,23 +680,23 @@ export default function PosTerminal({
       changeDue,
     };
 
-    // 1. Deduct inventory stock atomically
+    // Deduct stock from WH/Stock
     setProducts((prev) =>
       prev.map((prod) => {
         const soldItem = cart.find((c) => c.id === prod.id);
         if (!soldItem) return prod;
         return {
           ...prod,
-          stock: Math.max(0, prod.stock - soldItem.qty),
+          stock: Math.max(0, Number((prod.stock - soldItem.qty).toFixed(2))),
         };
       })
     );
 
-    // 2. Update customer loyalty points, total spent & credit ledger
+    // Update Partner loyalty & receivables
     setCustomers((prev) =>
       prev.map((c) => {
-        if (c.id !== customer.id) return c;
-        const earnedPoints = Math.floor(cartSummary.grandTotal);
+        if (c.id !== activeCustomer.id) return c;
+        const earnedPoints = Math.max(0, Math.floor(cartSummary.grandTotal));
         return {
           ...c,
           loyaltyPoints: c.loyaltyPoints + earnedPoints,
@@ -663,55 +709,47 @@ export default function PosTerminal({
       })
     );
 
-    // 3. Save Order
     setOrders((prev) => [newOrder, ...prev]);
-
-    // 4. Play success chime & show thermal receipt
     posSound.playSuccessChime();
     setIsCheckoutOpen(false);
     setActiveReceiptOrder(newOrder);
     setCart([]);
     setAppliedPromo(null);
-    setManualDiscountValue(0);
     setCashTendered("");
     setSplitCashAmount("");
     setOrderNote("");
-    showToast(`Sale ${newOrder.id} completed (${formatMoney(newOrder.total)})`, "success");
+    showToast(`Validated ${newOrder.id} (${formatMoney(newOrder.total)})`, "success");
   };
 
-  // Process Return / Refund on an Order
+  // Odoo Refund / Credit Note
   const handleRefundOrder = (order) => {
     if (order.status === "Refunded") {
-      showToast("This invoice has already been refunded.", "warning");
+      showToast("Order already refunded", "warning");
       return;
     }
-    // Restore stock back into inventory
     setProducts((prev) =>
       prev.map((prod) => {
         const returnedLine = order.items.find((i) => i.id === prod.id);
         if (!returnedLine) return prod;
         return {
           ...prod,
-          stock: prod.stock + returnedLine.qty,
+          stock: Number((prod.stock + returnedLine.qty).toFixed(2)),
         };
       })
     );
-
-    // Update order status
     setOrders((prev) =>
       prev.map((o) =>
         o.id === order.id ? { ...o, status: "Refunded" } : o
       )
     );
-
     posSound.playScanBeep();
     showToast(
-      `Invoice ${order.id} refunded & ${order.items.length} SKU(s) restored to stock!`,
+      `Credit Note issued for ${order.id} & items returned to WH/Stock!`,
       "success"
     );
   };
 
-  // Save or Create Product in Inventory
+  // Save Odoo Product Form
   const handleSaveProduct = (e) => {
     e.preventDefault();
     if (!editingProduct.name.trim() || !editingProduct.sku.trim()) return;
@@ -722,6 +760,8 @@ export default function PosTerminal({
       wholesalePrice: Number(editingProduct.wholesalePrice) || 0,
       costPrice: Number(editingProduct.costPrice) || 0,
       stock: Number(editingProduct.stock) || 0,
+      forecastedStock:
+        Number(editingProduct.forecastedStock) || Number(editingProduct.stock) || 0,
       minStock: Number(editingProduct.minStock) || 5,
     };
 
@@ -735,10 +775,34 @@ export default function PosTerminal({
 
     setIsProductModalOpen(false);
     setEditingProduct(null);
-    showToast(`Saved SKU: ${normalized.name}`, "success");
+    showToast(`Saved Product Template: ${normalized.name}`, "success");
   };
 
-  // Receive Stock via Purchase Order
+  // Record Cash In / Cash Out
+  const handleRecordCashInOut = (e) => {
+    e.preventDefault();
+    const amt = Number(cashMoveAmount) || 0;
+    if (!cashMoveReason.trim() || amt <= 0) return;
+
+    const entry = {
+      id: `CSH-${Date.now().toString().slice(-4)}`,
+      type: cashMoveType,
+      title: cashMoveReason.trim(),
+      category: cashMoveType,
+      amount: amt,
+      paidVia: "Cash Drawer",
+      timestamp: new Date().toISOString(),
+      recordedBy: currentUser?.name || "Alex Morgan",
+    };
+    setExpenses((prev) => [entry, ...prev]);
+    setCashMoveAmount("");
+    setCashMoveReason("");
+    setCashInOutModalOpen(false);
+    posSound.playSuccessChime();
+    showToast(`${cashMoveType}: ${formatMoney(amt)} (${entry.title})`, "success");
+  };
+
+  // Receive Purchase Order
   const handleReceiveStockOrder = (e) => {
     e.preventDefault();
     const target = products.find((p) => p.id === stockInProductId);
@@ -747,12 +811,18 @@ export default function PosTerminal({
 
     setProducts((prev) =>
       prev.map((p) =>
-        p.id === target.id ? { ...p, stock: p.stock + qtyNum } : p
+        p.id === target.id
+          ? {
+              ...p,
+              stock: p.stock + qtyNum,
+              forecastedStock: (p.forecastedStock || p.stock) + qtyNum,
+            }
+          : p
       )
     );
 
     const poEntry = {
-      id: `PO-2026-${882 + stockInHistory.length}`,
+      id: `PO/2026/00${82 + stockInHistory.length}`,
       productName: target.name,
       supplier: target.supplier || "Global Foods Distribution",
       qty: qtyNum,
@@ -763,12 +833,12 @@ export default function PosTerminal({
     setStockInHistory((prev) => [poEntry, ...prev]);
     posSound.playSuccessChime();
     showToast(
-      `Received +${qtyNum} ${target.unit} of ${target.name} into Inventory`,
+      `Validated Receipt ${poEntry.id}: +${qtyNum} ${target.unit} of ${target.name}`,
       "success"
     );
   };
 
-  // Create New Customer
+  // Create Customer / Partner
   const handleCreateCustomer = (e) => {
     e.preventDefault();
     if (!newCustomerForm.name.trim()) return;
@@ -776,7 +846,10 @@ export default function PosTerminal({
       id: `cust-${Date.now().toString().slice(-4)}`,
       name: newCustomerForm.name.trim(),
       phone: newCustomerForm.phone.trim() || "N/A",
-      email: newCustomerForm.email.trim() || "customer@store.local",
+      email: newCustomerForm.email.trim() || "partner@store.local",
+      address: newCustomerForm.address.trim() || "Main Street",
+      vatNumber: newCustomerForm.vatNumber.trim() || "N/A",
+      pricelistId: newCustomerForm.pricelistId || "pl-public",
       tier: newCustomerForm.tier,
       loyaltyPoints: 50,
       totalSpent: 0,
@@ -786,19 +859,12 @@ export default function PosTerminal({
     };
     setCustomers((prev) => [...prev, created]);
     setSelectedCustomerId(created.id);
+    setSelectedPricelistId(created.pricelistId);
     setIsCustomerModalOpen(false);
-    setNewCustomerForm({
-      name: "",
-      phone: "",
-      email: "",
-      tier: "VIP Gold",
-      creditLimit: 500,
-      notes: "",
-    });
-    showToast(`Customer "${created.name}" registered with 50 bonus points!`, "success");
+    showToast(`Partner "${created.name}" created in res.partner`, "success");
   };
 
-  // Settle Customer Credit Balance
+  // Settle Customer Credit
   const handleSettleCredit = (e) => {
     e.preventDefault();
     if (!settlingCustomer) return;
@@ -813,34 +879,14 @@ export default function PosTerminal({
     );
     posSound.playSuccessChime();
     showToast(
-      `Recorded ${formatMoney(amt)} credit payment from ${settlingCustomer.name}`,
+      `Posted ${formatMoney(amt)} payment for ${settlingCustomer.name}`,
       "success"
     );
     setSettlingCustomer(null);
     setSettleAmount("");
   };
 
-  // Add Store Expense
-  const handleAddExpense = (e) => {
-    e.preventDefault();
-    const amt = Number(expenseAmount) || 0;
-    if (!expenseTitle.trim() || amt <= 0) return;
-    const exp = {
-      id: `exp-${Date.now().toString().slice(-4)}`,
-      title: expenseTitle.trim(),
-      category: expenseCategory,
-      amount: amt,
-      paidVia: "Cash Drawer",
-      timestamp: new Date().toISOString(),
-      recordedBy: currentUser?.name || "Alex Morgan",
-    };
-    setExpenses((prev) => [exp, ...prev]);
-    setExpenseTitle("");
-    setExpenseAmount("");
-    showToast(`Recorded store expense: ${exp.title} (${formatMoney(amt)})`, "success");
-  };
-
-  // Analytics & Financial Metrics
+  // Financial & Session Metrics
   const financialMetrics = useMemo(() => {
     const activeOrders = orders.filter((o) => o.status !== "Refunded");
     const grossRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0);
@@ -855,8 +901,15 @@ export default function PosTerminal({
       });
     });
     const grossProfit = grossRevenue - totalTaxCollected - totalCogs;
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const netProfit = grossProfit - totalExpenses;
+
+    const cashInTotal = expenses
+      .filter((e) => e.type === "Cash In")
+      .reduce((s, e) => s + e.amount, 0);
+    const cashOutTotal = expenses
+      .filter((e) => e.type !== "Cash In")
+      .reduce((s, e) => s + e.amount, 0);
+
+    const netProfit = grossProfit - cashOutTotal;
 
     const cashSales = activeOrders
       .filter((o) => o.paymentMethod === "Cash")
@@ -887,8 +940,9 @@ export default function PosTerminal({
     const expectedDrawerCash =
       Number(storeSettings?.openingCashFloat || 500) +
       cashSales +
-      splitSales * 0.5 -
-      totalExpenses;
+      splitSales * 0.5 +
+      cashInTotal -
+      cashOutTotal;
 
     return {
       activeOrderCount: activeOrders.length,
@@ -896,7 +950,9 @@ export default function PosTerminal({
       totalTaxCollected,
       totalCogs,
       grossProfit,
-      totalExpenses,
+      cashInTotal,
+      cashOutTotal,
+      totalExpenses: cashOutTotal,
       netProfit,
       cashSales,
       cardSales,
@@ -912,266 +968,438 @@ export default function PosTerminal({
     };
   }, [orders, expenses, products, storeSettings?.openingCashFloat]);
 
-  // Export JSON Backup
-  const handleExportJson = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      product: "Pro General POS v2.4",
-      storeSettings,
-      products,
-      customers,
-      suppliers,
-      orders,
-      expenses,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `pro-general-pos-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Full POS database exported as JSON", "success");
-  };
-
-  // Export Orders CSV
-  const handleExportCsv = () => {
-    const headers = [
-      "Invoice_ID",
-      "Timestamp",
-      "Customer",
-      "Pricing_Tier",
-      "Payment_Method",
-      "Status",
-      "Subtotal",
-      "Discount",
-      "Tax",
-      "Total",
-    ];
-    const rows = orders.map((o) => [
-      o.id,
-      o.timestamp,
-      `"${o.customerName}"`,
-      o.pricingMode,
-      `"${o.paymentMethod}"`,
-      o.status,
-      o.subtotal.toFixed(2),
-      o.discountAmount.toFixed(2),
-      o.taxAmount.toFixed(2),
-      o.total.toFixed(2),
-    ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `pro-general-pos-sales-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Sales ledger exported as CSV", "success");
-  };
-
-  const activeCustomer =
-    customers.find((c) => c.id === selectedCustomerId) || customers[0];
+  const selectedLineObj =
+    cart.find((c) => c.id === selectedLineId) || cart[cart.length - 1] || null;
 
   return (
     <div className="pos-terminal-shell">
-      {/* Top Global Command Bar */}
+      {/* ================================================================== */}
+      {/* ODOO PLUM TOP NAVBAR (#714B67)                                     */}
+      {/* ================================================================== */}
       <header className="pos-topbar">
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
-            className="pos-brand-logo"
+        {/* Left: Odoo App Switcher + Brand + Module Tabs */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", overflowX: "auto" }}>
+          <button
+            type="button"
             onClick={onBackToHome}
-            title="Return to Pro General POS Homepage"
-            style={{ cursor: "pointer" }}
+            className="pos-odoo-app-grid-btn"
+            title="Switch to Homepage & Animated Diagrams"
           >
-            <ScanBarcode size={20} color="#090D16" strokeWidth={2.5} />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontWeight: 800, fontSize: "15.5px", color: "#F8FAFC" }}>
-                {storeSettings?.storeName || "Pro General POS"}
-              </span>
-              <span className="pos-live-pill">
-                <span className="pos-live-dot" />
-                TERMINAL ONLINE
-              </span>
-            </div>
-            <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-              Operator: <strong style={{ color: "#E2E8F0" }}>{currentUser?.name || "Alex Morgan"}</strong> • {currentUser?.role || "Store Manager"}
-            </div>
-          </div>
+            <Grid size={18} color="#FFFFFF" />
+          </button>
+
+          <span style={{ fontWeight: 800, fontSize: "15px", color: "#FFFFFF", whiteSpace: "nowrap", marginRight: "6px" }}>
+            {storeSettings?.storeName || "Pro General POS"}
+          </span>
+
+          {/* Top Odoo Navigation Tabs */}
+          <nav style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            {[
+              { id: "pos", label: "POS Register", icon: ShoppingCart },
+              { id: "orders", label: "Orders", icon: FileText },
+              { id: "inventory", label: "Products", icon: Package },
+              { id: "customers", label: "Customers", icon: Users },
+              { id: "suppliers", label: "Purchase (PO)", icon: Truck },
+              { id: "drawer", label: "Cash & Z-Report", icon: Wallet },
+              { id: "analytics", label: "Reporting & Flow", icon: BarChart3 },
+              { id: "settings", label: "Configuration", icon: Settings },
+            ].map((nav) => {
+              const IconComp = nav.icon;
+              const isActive = activeModule === nav.id;
+              return (
+                <button
+                  key={nav.id}
+                  type="button"
+                  onClick={() => setActiveModule(nav.id)}
+                  className={`pos-odoo-top-tab ${isActive ? "active" : ""}`}
+                >
+                  <IconComp size={14} />
+                  <span>{nav.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Center Quick Controls */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          {/* Retail vs Wholesale Mode Switcher */}
-          <div className="pos-segmented-control">
-            <button
-              type="button"
-              onClick={() => {
-                setPricingMode("retail");
-                showToast("Switched to Standard Retail Pricing Tier", "success");
-              }}
-              className={`pos-segment-btn ${pricingMode === "retail" ? "active" : ""}`}
-            >
-              Retail Tier
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPricingMode("wholesale");
-                showToast("Switched to Wholesale B2B Pricing Tier", "success");
-              }}
-              className={`pos-segment-btn ${pricingMode === "wholesale" ? "active-wholesale" : ""}`}
-            >
-              Wholesale B2B
-            </button>
-          </div>
+        {/* Right: Odoo Session Actions (Cash In/Out, Floating Orders, Currency, Close Session) */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={() => setCashInOutModalOpen(true)}
+            className="pos-odoo-header-pill"
+          >
+            <ArrowRightLeft size={13} />
+            <span>Cash In/Out</span>
+          </button>
 
-          {/* Currency Quick Switcher */}
+          <button
+            type="button"
+            onClick={() => setShowParkedDrawer((v) => !v)}
+            className="pos-odoo-header-pill"
+          >
+            <PauseCircle size={13} />
+            <span>Floating Orders ({parkedBills.length})</span>
+          </button>
+
           <select
             value={storeSettings?.currency || "$"}
             onChange={(e) =>
               setStoreSettings((prev) => ({ ...prev, currency: e.target.value }))
             }
-            className="pos-topbar-select"
-            title="Switch Store Currency"
+            className="pos-odoo-currency-select"
+            title="Switch Currency"
           >
             {CURRENCY_OPTIONS.map((c) => (
-              <option key={c.code} value={c.symbol}>
+              <option key={c.code} value={c.symbol} style={{ color: "#0F172A" }}>
                 {c.code} ({c.symbol.trim()})
               </option>
             ))}
           </select>
 
-          {/* Parked Bills Recall Button */}
           <button
             type="button"
-            onClick={() => setShowParkedDrawer((v) => !v)}
-            className="pos-topbar-btn"
+            onClick={() => {
+              setCountedCashClosing(financialMetrics.expectedDrawerCash.toFixed(2));
+              setCloseSessionModalOpen(true);
+            }}
+            className="pos-odoo-close-btn"
           >
-            <PauseCircle size={15} color="#F59E0B" />
-            <span>Parked Bills</span>
-            <span className="pos-count-badge">{parkedBills.length}</span>
-          </button>
-
-          {/* Low Stock Alert Indicator */}
-          {financialMetrics.lowStockProducts.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveModule("inventory");
-                setInvStockFilter("low");
-              }}
-              className="pos-topbar-btn"
-              style={{ borderColor: "rgba(245, 158, 11, 0.4)", color: "#FCD34D" }}
-            >
-              <AlertTriangle size={14} color="#F59E0B" />
-              <span>{financialMetrics.lowStockProducts.length} Low Stock</span>
-            </button>
-          )}
-        </div>
-
-        {/* Right Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <button
-            type="button"
-            onClick={() =>
-              setStoreSettings((prev) => ({
-                ...prev,
-                enableSoundEffects: !prev.enableSoundEffects,
-              }))
-            }
-            className="pos-icon-btn"
-            title={
-              storeSettings?.enableSoundEffects
-                ? "POS Audio Beep Enabled"
-                : "POS Audio Muted"
-            }
-          >
-            {storeSettings?.enableSoundEffects ? (
-              <Volume2 size={16} color="#10B981" />
-            ) : (
-              <VolumeX size={16} color="#94A3B8" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenDeployModal}
-            className="pos-topbar-btn"
-            style={{ borderColor: "rgba(59, 130, 246, 0.45)", color: "#93C5FD" }}
-          >
-            <GitBranch size={14} />
-            <span>Vercel & Git</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onBackToHome}
-            className="pos-topbar-btn"
-          >
-            <Home size={14} />
-            <span>Homepage & Diagrams</span>
+            <Lock size={13} />
+            <span>Close Session</span>
           </button>
         </div>
       </header>
 
-      {/* Main Body: Left Navigation Rail + Active Module Viewport */}
+      {/* ================================================================== */}
+      {/* MAIN MODULE VIEWPORT                                               */}
+      {/* ================================================================== */}
       <div className="pos-main-body">
-        {/* Left Navigation Rail */}
-        <aside className="pos-nav-rail">
-          {[
-            { id: "pos", label: "POS Register", shortcut: "F1", icon: ShoppingCart },
-            { id: "inventory", label: "Inventory & SKUs", shortcut: "F3", icon: Package },
-            { id: "orders", label: "Orders & Returns", shortcut: "F4", icon: FileText },
-            { id: "customers", label: "Customers & Credit", shortcut: "F5", icon: Users },
-            { id: "suppliers", label: "Suppliers & POs", shortcut: "F6", icon: Truck },
-            { id: "drawer", label: "Cash & Z-Report", shortcut: "F7", icon: Wallet },
-            { id: "analytics", label: "Analytics & Flow", shortcut: "F8", icon: BarChart3 },
-            { id: "settings", label: "Settings & Backup", shortcut: "F9", icon: Settings },
-          ].map((nav) => {
-            const IconComp = nav.icon;
-            const isActive = activeModule === nav.id;
-            return (
-              <button
-                key={nav.id}
-                type="button"
-                onClick={() => setActiveModule(nav.id)}
-                className={`pos-rail-item ${isActive ? "active" : ""}`}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                  <IconComp size={18} />
-                  <span className="pos-kbd-mini">{nav.shortcut}</span>
-                </div>
-                <span className="pos-rail-label">{nav.label}</span>
-              </button>
-            );
-          })}
-        </aside>
-
-        {/* ACTIVE WORKSPACE VIEWPORT */}
         <main className="pos-workspace-content">
           {/* ============================================================== */}
-          {/* MODULE 1: POS REGISTER TERMINAL                                */}
+          {/* MODULE 1: AUTHENTIC ODOO POS REGISTER SCREEN                   */}
           {/* ============================================================== */}
           {activeModule === "pos" && (
-            <div className="pos-register-split">
-              {/* LEFT 65%: PRODUCT CATALOG & BARCODE SCANNER BAR */}
+            <div className="pos-odoo-register-grid">
+              {/* LEFT PANE: ORDER TICKET + ODOO ACTION PAD + NUMPAD */}
+              <div className="pos-odoo-left-ticket">
+                {/* Orderlines Scroll Area */}
+                <div className="pos-odoo-orderlines">
+                  {cart.length === 0 ? (
+                    <div className="pos-empty-cart">
+                      <ShoppingCart size={38} color="#94A3B8" />
+                      <div style={{ fontWeight: 800, color: "#334155", fontSize: "14.5px", marginTop: "8px" }}>
+                        Start Adding Products
+                      </div>
+                      <div style={{ fontSize: "12.5px", color: "#64748B", maxWidth: "240px", textAlign: "center", marginTop: "4px" }}>
+                        Click any product card on the right, scan a barcode, or click &ldquo;Simulate Scan&rdquo;.
+                      </div>
+                    </div>
+                  ) : (
+                    cart.map((item) => {
+                      const isSelected = item.id === selectedLineId;
+                      const unitPrice = getEffectiveUnitPrice(item);
+                      const gross = unitPrice * item.qty;
+                      const disc =
+                        gross * ((item.itemDiscountPercent || 0) / 100);
+                      const netLine = gross - disc;
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => setSelectedLineId(item.id)}
+                          className={`pos-odoo-line ${isSelected ? "selected" : ""}`}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                            <div>
+                              <span style={{ fontWeight: 700, fontSize: "13.5px", color: "#0F172A" }}>
+                                {item.name}
+                              </span>
+                              <div style={{ fontSize: "11.5px", color: "#475569", marginTop: "2px" }}>
+                                <strong>{item.qty}</strong> {item.unit} × {formatMoney(unitPrice)} / {item.unit}
+                                {item.itemDiscountPercent > 0 && (
+                                  <span style={{ color: "#059669", fontWeight: 700, marginLeft: "6px" }}>
+                                    With a {item.itemDiscountPercent}% discount
+                                  </span>
+                                )}
+                              </div>
+                              {item.customerNote && (
+                                <div className="pos-odoo-line-note">
+                                  <MessageSquare size={11} />
+                                  <span>Customer Note: {item.customerNote}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span className="pos-mono" style={{ fontWeight: 800, fontSize: "14px", color: "#0F172A" }}>
+                                {formatMoney(netLine)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeFromCart(item.id);
+                                }}
+                                className="pos-line-trash-btn"
+                                title="Remove Line"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Subtotal & Tax Summary Bar */}
+                <div className="pos-odoo-totals-strip">
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#475569" }}>
+                    <span>
+                      Taxes ({activeFiscal.name}):{" "}
+                      <strong className="pos-mono">{formatMoney(cartSummary.taxAmount)}</strong>
+                    </span>
+                    {cartSummary.discountAmount > 0 && (
+                      <span style={{ color: "#059669", fontWeight: 700 }}>
+                        Discount: -{formatMoney(cartSummary.discountAmount)}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: "4px" }}>
+                    <span style={{ fontSize: "16px", fontWeight: 800, color: "#0F172A" }}>
+                      Total
+                    </span>
+                    <span className="pos-mono" style={{ fontSize: "24px", fontWeight: 900, color: "#017E84" }}>
+                      {formatMoney(cartSummary.grandTotal)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ODOO ACTION BUTTONS PAD (Above Numpad) */}
+                <div className="pos-odoo-control-buttons">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!selectedLineObj) {
+                        showToast("Select an orderline first to add a Customer Note", "warning");
+                        return;
+                      }
+                      setNoteDraft(selectedLineObj.customerNote || "");
+                      setNoteModalOpen(true);
+                    }}
+                    className="pos-odoo-ctrl-btn"
+                  >
+                    <MessageSquare size={14} color="#714B67" />
+                    <span>Customer Note</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPricelistModalOpen(true)}
+                    className="pos-odoo-ctrl-btn"
+                  >
+                    <Layers size={14} color="#017E84" />
+                    <span>{activePricelist.name.split(" (")[0]}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prod = products.find(
+                        (p) => p.id === (selectedLineObj?.id || "prd-101")
+                      );
+                      if (prod) setInfoModalProduct(prod);
+                    }}
+                    className="pos-odoo-ctrl-btn"
+                  >
+                    <Info size={14} color="#2563EB" />
+                    <span>Product Info</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule("orders")}
+                    className="pos-odoo-ctrl-btn"
+                  >
+                    <RotateCcw size={14} color="#D97706" />
+                    <span>Refund</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleHoldBill}
+                    className="pos-odoo-ctrl-btn"
+                  >
+                    <PauseCircle size={14} color="#7C3AED" />
+                    <span>Hold Order</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCart([]);
+                      setAppliedPromo(null);
+                    }}
+                    className="pos-odoo-ctrl-btn"
+                    style={{ color: "#DC2626" }}
+                  >
+                    <Trash2 size={14} />
+                    <span>Clear</span>
+                  </button>
+                </div>
+
+                {/* AUTHENTIC ODOO INTERACTIVE BOTTOM PAD: CUSTOMER + PAYMENT + 4x4 NUMPAD */}
+                <div className="pos-odoo-bottom-pad">
+                  {/* Left Sub-Column: Customer Select + Giant Payment Button */}
+                  <div className="pos-odoo-pay-col">
+                    <div className="pos-odoo-customer-box">
+                      <select
+                        value={selectedCustomerId}
+                        onChange={(e) => {
+                          const cid = e.target.value;
+                          setSelectedCustomerId(cid);
+                          const cObj = customers.find((c) => c.id === cid);
+                          if (cObj?.pricelistId) {
+                            setSelectedPricelistId(cObj.pricelistId);
+                          }
+                        }}
+                        className="pos-odoo-customer-select"
+                      >
+                        {customers.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            👤 {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomerModalOpen(true)}
+                        className="pos-odoo-new-cust-btn"
+                        title="Create New Partner / Customer"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={cart.length === 0}
+                      onClick={() => {
+                        setCashTendered(cartSummary.grandTotal.toFixed(2));
+                        setSplitCashAmount((cartSummary.grandTotal / 2).toFixed(2));
+                        setIsCheckoutOpen(true);
+                      }}
+                      className="pos-odoo-giant-pay-btn"
+                    >
+                      <span style={{ fontSize: "19px", fontWeight: 900 }}>Payment</span>
+                      <span className="pos-mono" style={{ fontSize: "14px", opacity: 0.92 }}>
+                        {formatMoney(cartSummary.grandTotal)}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Right Sub-Column: Authentic 4x4 Odoo Numpad */}
+                  <div className="pos-odoo-numpad-grid">
+                    {["1", "2", "3"].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleNumpadKey(n)}
+                        className="pos-numpad-key"
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setNumpadMode("qty")}
+                      className={`pos-numpad-mode ${numpadMode === "qty" ? "active" : ""}`}
+                    >
+                      Qty
+                    </button>
+
+                    {["4", "5", "6"].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleNumpadKey(n)}
+                        className="pos-numpad-key"
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setNumpadMode("disc")}
+                      className={`pos-numpad-mode ${numpadMode === "disc" ? "active" : ""}`}
+                    >
+                      % Disc
+                    </button>
+
+                    {["7", "8", "9"].map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => handleNumpadKey(n)}
+                        className="pos-numpad-key"
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setNumpadMode("price")}
+                      className={`pos-numpad-mode ${numpadMode === "price" ? "active" : ""}`}
+                    >
+                      Price
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleNumpadKey("+/-")}
+                      className="pos-numpad-key"
+                    >
+                      +/-
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNumpadKey("0")}
+                      className="pos-numpad-key"
+                    >
+                      0
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNumpadKey(".")}
+                      className="pos-numpad-key"
+                    >
+                      .
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNumpadKey("BACKSPACE")}
+                      className="pos-numpad-key"
+                      title="Backspace"
+                    >
+                      <Delete size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* RIGHT PANE: CATEGORY BREADCRUMBS + SEARCH + BRIGHT ODOO PRODUCT CARDS */}
               <div className="pos-catalog-pane">
-                {/* Search + Barcode Wedge Bar */}
+                {/* Search + Barcode Wedge + Coupon Bar */}
                 <div className="pos-scanner-bar">
                   <div className="pos-search-input-wrap">
-                    <Search size={16} color="#94A3B8" />
+                    <Search size={16} color="#64748B" />
                     <input
                       ref={searchInputRef}
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search product name, SKU, or category (F2)..."
+                      placeholder="Search Products by Name, Internal Ref, or Category..."
                       className="pos-clean-input"
                     />
                     {searchQuery && (
@@ -1185,49 +1413,28 @@ export default function PosTerminal({
                     )}
                   </div>
 
-                  {/* Direct Barcode Scanner Form */}
                   <form onSubmit={handleBarcodeSubmit} className="pos-barcode-form">
-                    <ScanBarcode size={16} color="#3B82F6" />
+                    <ScanBarcode size={16} color="#714B67" />
                     <input
                       type="text"
                       value={barcodeInput}
                       onChange={(e) => setBarcodeInput(e.target.value)}
-                      placeholder="Scan or type Barcode / SKU + Enter..."
+                      placeholder="Scan Barcode + Enter..."
                       className="pos-clean-input"
                     />
                   </form>
 
-                  {/* 1-Click Simulate Barcode Scan Button */}
                   <button
                     type="button"
                     onClick={handleSimulateBarcodeScan}
                     className="pos-simulate-scan-btn"
-                    title="Simulate Hardware Laser Barcode Scan"
                   >
                     <ScanBarcode size={15} />
                     <span>Simulate Scan</span>
                   </button>
                 </div>
 
-                {/* Live Laser Scan Feedback Strip */}
-                {lastScannedBanner && (
-                  <div className="pos-scan-feedback-banner">
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span className="pos-live-dot" />
-                      <span style={{ fontFamily: "monospace", fontSize: "11.5px", color: "#6EE7B7" }}>
-                        BARCODE SCANNED [{lastScannedBanner.barcode}]
-                      </span>
-                      <strong style={{ color: "#F8FAFC", fontSize: "12.5px" }}>
-                        {lastScannedBanner.name}
-                      </strong>
-                    </div>
-                    <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#10B981", fontSize: "12.5px" }}>
-                      +{formatMoney(lastScannedBanner.price)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Category Filter Pills */}
+                {/* Odoo Category Breadcrumbs & Pills */}
                 <div className="pos-category-strip">
                   {PRODUCT_CATEGORIES.map((cat) => {
                     const isSelected = selectedCategory === cat.id;
@@ -1243,20 +1450,22 @@ export default function PosTerminal({
                         className={`pos-category-pill ${isSelected ? "active" : ""}`}
                       >
                         <span>{cat.label}</span>
-                        <span className="pos-cat-count">{count}</span>
+                        <span className="pos-cat-count">({count})</span>
                       </button>
                     );
                   })}
                 </div>
 
-                {/* High-Density Product Grid */}
+                {/* Bright Odoo Product Cards Grid */}
                 <div className="pos-product-grid">
                   {filteredPosProducts.map((product) => {
                     const inCartItem = cart.find((c) => c.id === product.id);
-                    const activePrice =
-                      pricingMode === "wholesale"
+                    const basePrice =
+                      activePricelist.mode === "wholesale"
                         ? product.wholesalePrice
                         : product.retailPrice;
+                    const activePrice =
+                      basePrice * (1 - (activePricelist.discountPct || 0) / 100);
                     const isLowStock =
                       product.stock > 0 && product.stock <= product.minStock;
                     const isOut = product.stock <= 0;
@@ -1269,9 +1478,44 @@ export default function PosTerminal({
                           inCartItem ? "in-cart" : ""
                         } ${isOut ? "out-of-stock" : ""}`}
                       >
-                        {/* Top Row: SKU & Stock Badge */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
-                          <span className="pos-sku-tag">{product.sku}</span>
+                        {/* Top Bar: Price Tag + Odoo Info "i" Icon */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span className="pos-odoo-price-tag">
+                            {formatMoney(activePrice)}
+                            {product.toWeight ? ` / ${product.unit}` : ""}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInfoModalProduct(product);
+                            }}
+                            className="pos-odoo-info-icon"
+                            title="Odoo Product Info (Warehouse Stock, Margins, Tax)"
+                          >
+                            <Info size={13} />
+                          </button>
+                        </div>
+
+                        {/* Middle: Product Name & Category */}
+                        <div style={{ margin: "10px 0" }}>
+                          <div
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 800,
+                              color: product.colorAccent || "#714B67",
+                              textTransform: "uppercase",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            [{product.sku}] {product.category}
+                          </div>
+                          <div className="pos-product-name">{product.name}</div>
+                        </div>
+
+                        {/* Bottom: Stock Status & Scale / Cart Indicator */}
+                        <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span
                             className={`pos-stock-badge ${
                               isOut
@@ -1282,328 +1526,40 @@ export default function PosTerminal({
                             }`}
                           >
                             {isOut
-                              ? "OUT OF STOCK"
+                              ? "Out of Stock"
                               : `${product.stock} ${product.unit}`}
                           </span>
-                        </div>
 
-                        {/* Category Color Bar + Product Title */}
-                        <div style={{ marginTop: "8px", marginBottom: "10px" }}>
-                          <div
-                            style={{
-                              fontSize: "10px",
-                              fontWeight: 700,
-                              color: product.colorAccent || "#60A5FA",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.05em",
-                              marginBottom: "3px",
-                            }}
-                          >
-                            {product.category}
-                          </div>
-                          <div className="pos-product-name">{product.name}</div>
-                        </div>
-
-                        {/* Bottom Price & Active Cart Quantity Badge */}
-                        <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                          <div>
-                            <div className="pos-product-price">
-                              {formatMoney(activePrice)}
-                            </div>
-                            <div style={{ fontSize: "10px", color: "#64748B", fontFamily: "monospace" }}>
-                              {pricingMode === "wholesale"
-                                ? `Retail: ${formatMoney(product.retailPrice)}`
-                                : `W/S: ${formatMoney(product.wholesalePrice)}`}
-                            </div>
-                          </div>
-
-                          {inCartItem ? (
-                            <div className="pos-in-cart-qty-pill">
-                              {inCartItem.qty} in cart
-                            </div>
-                          ) : (
-                            <div className="pos-add-plus-circle">
-                              <Plus size={14} />
-                            </div>
-                          )}
+                          {product.toWeight ? (
+                            <span className="pos-scale-pill">
+                              <Scale size={11} /> Scale
+                            </span>
+                          ) : inCartItem ? (
+                            <span className="pos-in-cart-qty-pill">
+                              {inCartItem.qty} in ticket
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-
-              {/* RIGHT 35%: SMART CART & ACTIVE RECEIPT DOCK */}
-              <div className="pos-cart-dock">
-                {/* Customer & Pricing Tier Header */}
-                <div className="pos-cart-header">
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <select
-                      value={selectedCustomerId}
-                      onChange={(e) => setSelectedCustomerId(e.target.value)}
-                      className="pos-input"
-                      style={{ flex: 1, padding: "7px 10px", fontSize: "12.5px" }}
-                    >
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c.tier})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomerModalOpen(true)}
-                      className="pos-btn-secondary"
-                      style={{ padding: "7px 10px", fontSize: "12px" }}
-                      title="Register New Customer"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-
-                  {activeCustomer && activeCustomer.id !== "cust-walkin" && (
-                    <div className="pos-customer-mini-bar">
-                      <span>
-                        Loyalty: <strong style={{ color: "#10B981" }}>{activeCustomer.loyaltyPoints} pts</strong>
-                      </span>
-                      <span>
-                        Credit Due: <strong style={{ color: activeCustomer.creditBalance > 0 ? "#F59E0B" : "#94A3B8" }}>{formatMoney(activeCustomer.creditBalance)}</strong>
-                      </span>
-                      <span>
-                        Limit: <strong>{formatMoney(activeCustomer.creditLimit)}</strong>
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Cart Line Items List */}
-                <div className="pos-cart-items-scroll">
-                  {cart.length === 0 ? (
-                    <div className="pos-empty-cart">
-                      <ScanBarcode size={38} color="#475569" />
-                      <div style={{ fontWeight: 700, color: "#CBD5E1", fontSize: "14px", marginTop: "8px" }}>
-                        Ready to Scan or Tap Items
-                      </div>
-                      <div style={{ fontSize: "12px", color: "#64748B", maxWidth: "230px", textAlign: "center", marginTop: "4px" }}>
-                        Tap any product card on the left or click &ldquo;Simulate Scan&rdquo; to ring up an order.
-                      </div>
-                    </div>
-                  ) : (
-                    cart.map((item) => {
-                      const unitPrice =
-                        pricingMode === "wholesale"
-                          ? item.wholesalePrice
-                          : item.retailPrice;
-                      const gross = unitPrice * item.qty;
-                      const disc =
-                        gross * ((item.itemDiscountPercent || 0) / 100);
-                      const netLine = gross - disc;
-
-                      return (
-                        <div key={item.id} className="pos-cart-line">
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: "13px", color: "#F8FAFC" }}>
-                                {item.name}
-                              </div>
-                              <div style={{ fontSize: "11px", color: "#94A3B8", fontFamily: "monospace" }}>
-                                {formatMoney(unitPrice)} × {item.qty} {item.unit} ({item.sku})
-                              </div>
-                            </div>
-                            <div style={{ textAlign: "right", fontFamily: "monospace" }}>
-                              <div style={{ fontWeight: 800, fontSize: "13.5px", color: "#F8FAFC" }}>
-                                {formatMoney(netLine)}
-                              </div>
-                              {item.itemDiscountPercent > 0 && (
-                                <div style={{ fontSize: "10px", color: "#10B981" }}>
-                                  -{item.itemDiscountPercent}% off
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Stepper + Item Discount + Delete */}
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
-                            <div className="pos-qty-stepper">
-                              <button
-                                type="button"
-                                onClick={() => updateCartQty(item.id, -1)}
-                                className="pos-step-btn"
-                              >
-                                <Minus size={12} />
-                              </button>
-                              <span className="pos-step-val">{item.qty}</span>
-                              <button
-                                type="button"
-                                onClick={() => updateCartQty(item.id, 1)}
-                                className="pos-step-btn"
-                              >
-                                <Plus size={12} />
-                              </button>
-                            </div>
-
-                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <span style={{ fontSize: "10.5px", color: "#64748B" }}>Disc %</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={item.itemDiscountPercent || ""}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  updateItemDiscount(item.id, e.target.value)
-                                }
-                                className="pos-mini-disc-input"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeFromCart(item.id)}
-                                className="pos-line-trash-btn"
-                                title="Remove Item"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Promo Code & Tax Toggle Strip */}
-                <div className="pos-cart-promo-strip">
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    <input
-                      type="text"
-                      value={promoCodeInput}
-                      onChange={(e) => setPromoCodeInput(e.target.value)}
-                      placeholder="Promo (WELCOME10, VIP15)"
-                      className="pos-input"
-                      style={{ padding: "6px 9px", fontSize: "11.5px", flex: 1 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleApplyPromo}
-                      className="pos-btn-secondary"
-                      style={{ padding: "6px 10px", fontSize: "11.5px" }}
-                    >
-                      <Tag size={12} />
-                      <span>Apply</span>
-                    </button>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", fontSize: "11.5px", color: "#94A3B8" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={taxEnabled}
-                        onChange={(e) => setTaxEnabled(e.target.checked)}
-                      />
-                      <span>Apply Tax ({storeSettings?.taxRate || 8}%)</span>
-                    </label>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                      <span>Extra Disc ({currency.trim()}):</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={manualDiscountValue || ""}
-                        placeholder="0.00"
-                        onChange={(e) => setManualDiscountValue(e.target.value)}
-                        className="pos-mini-disc-input"
-                        style={{ width: "58px" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sticky Totals & Checkout CTA Footer */}
-                <div className="pos-cart-footer">
-                  <div className="pos-summary-row">
-                    <span>Subtotal ({cartSummary.totalItems} items)</span>
-                    <span className="pos-mono">{formatMoney(cartSummary.subtotal)}</span>
-                  </div>
-                  <div className="pos-summary-row" style={{ color: "#10B981" }}>
-                    <span>
-                      Total Discounts{" "}
-                      {appliedPromo ? `(${appliedPromo.code})` : ""}
-                    </span>
-                    <span className="pos-mono">
-                      -{formatMoney(cartSummary.discountAmount)}
-                    </span>
-                  </div>
-                  <div className="pos-summary-row">
-                    <span>
-                      Sales Tax ({taxEnabled ? `${storeSettings?.taxRate || 8}%` : "0%"})
-                    </span>
-                    <span className="pos-mono">{formatMoney(cartSummary.taxAmount)}</span>
-                  </div>
-
-                  <div className="pos-grand-total-row">
-                    <span>GRAND TOTAL</span>
-                    <span className="pos-grand-total-val">
-                      {formatMoney(cartSummary.grandTotal)}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: "8px", marginTop: "10px" }}>
-                    <button
-                      type="button"
-                      onClick={handleHoldBill}
-                      disabled={cart.length === 0}
-                      className="pos-btn-secondary"
-                      style={{ justifyContent: "center", padding: "11px 8px", fontSize: "12px" }}
-                    >
-                      <PauseCircle size={14} color="#F59E0B" />
-                      <span>Hold</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCart([]);
-                        setAppliedPromo(null);
-                        setManualDiscountValue(0);
-                      }}
-                      disabled={cart.length === 0}
-                      className="pos-btn-secondary"
-                      style={{ justifyContent: "center", padding: "11px 8px", fontSize: "12px", color: "#FCA5A5" }}
-                    >
-                      <Trash2 size={14} />
-                      <span>Clear</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={cart.length === 0}
-                      onClick={() => {
-                        setCashTendered(cartSummary.grandTotal.toFixed(2));
-                        setSplitCashAmount((cartSummary.grandTotal / 2).toFixed(2));
-                        setIsCheckoutOpen(true);
-                      }}
-                      className="pos-btn-charge"
-                    >
-                      <span>Charge {formatMoney(cartSummary.grandTotal)}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {/* ============================================================== */}
-          {/* MODULE 2: INVENTORY, SKUs & BARCODE LABEL STUDIO               */}
+          {/* MODULE 2: PRODUCTS (ODOO PRODUCT FORM & KANBAN / LIST)         */}
           {/* ============================================================== */}
           {activeModule === "inventory" && (
             <div className="pos-module-page">
               <div className="pos-module-header">
                 <div>
                   <h2 className="pos-module-title">
-                    Inventory, SKU Pricing & Barcode Sticker Studio
+                    Products (`product.template`) — Odoo Inventory & Barcode Studio
                   </h2>
                   <p className="pos-module-subtitle">
-                    Manage retail & wholesale price tiers, stock levels, cost margins, expiry dates, and printable barcode shelf labels.
+                    Click any product to open its Odoo Product Form Sheet (On-Hand, Forecasted, Sales Price, Customer Taxes, Warehouse Location).
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -1613,7 +1569,7 @@ export default function PosTerminal({
                     className="pos-btn-secondary"
                   >
                     <Printer size={15} />
-                    <span>Barcode Label Studio</span>
+                    <span>Print Shelf Barcode Labels</span>
                   </button>
                   <button
                     type="button"
@@ -1624,42 +1580,52 @@ export default function PosTerminal({
                         sku: `SKU-${Math.floor(100 + Math.random() * 900)}`,
                         barcode: `890102300${Math.floor(1000 + Math.random() * 8999)}`,
                         category: "Grocery & Staples",
+                        productType: "Storable Product",
+                        invoicingPolicy: "Ordered quantities",
+                        availableInPos: true,
+                        canBeSold: true,
+                        canBePurchased: true,
+                        toWeight: false,
                         retailPrice: 9.99,
                         wholesalePrice: 7.99,
                         costPrice: 5.5,
                         stock: 50,
+                        forecastedStock: 50,
                         minStock: 10,
-                        unit: "pcs",
+                        unit: "Units",
+                        customerTax: "8% GST",
                         supplier: "Global Foods Distribution",
+                        warehouseLocation: "WH/Stock/Aisle-01",
                         expiryDate: "2027-12-31",
-                        colorAccent: "#3B82F6",
+                        colorAccent: "#714B67",
                       });
+                      setProductFormTab("general");
                       setIsProductModalOpen(true);
                     }}
                     className="pos-btn-primary"
                   >
                     <Plus size={15} />
-                    <span>Add New SKU Product</span>
+                    <span>New Product (Odoo Form)</span>
                   </button>
                 </div>
               </div>
 
-              {/* Inventory KPIs */}
+              {/* KPIs */}
               <div className="pos-kpi-grid">
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Active Catalog SKUs</span>
+                  <span className="pos-kpi-label">Total Products</span>
                   <strong className="pos-kpi-value">{products.length}</strong>
-                  <span className="pos-kpi-sub">Across 8 store departments</span>
+                  <span className="pos-kpi-sub">Available in POS Session</span>
                 </div>
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Total Units in Warehouse</span>
+                  <span className="pos-kpi-label">Total On-Hand Units</span>
                   <strong className="pos-kpi-value">
                     {products.reduce((s, p) => s + p.stock, 0).toLocaleString()}
                   </strong>
-                  <span className="pos-kpi-sub">Real-time atomic stock count</span>
+                  <span className="pos-kpi-sub">Warehouse: WH/Stock</span>
                 </div>
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Inventory Cost Valuation</span>
+                  <span className="pos-kpi-label">Stock Valuation (Cost)</span>
                   <strong className="pos-kpi-value">
                     {formatMoney(financialMetrics.inventoryCostValue)}
                   </strong>
@@ -1667,415 +1633,99 @@ export default function PosTerminal({
                     Retail Value: {formatMoney(financialMetrics.inventoryRetailValue)}
                   </span>
                 </div>
-                <div className="pos-kpi-card" style={{ borderColor: financialMetrics.lowStockProducts.length > 0 ? "rgba(245,158,11,0.45)" : undefined }}>
-                  <span className="pos-kpi-label">Low Stock Alerts</span>
-                  <strong className="pos-kpi-value" style={{ color: "#F59E0B" }}>
+                <div className="pos-kpi-card">
+                  <span className="pos-kpi-label">Replenishment Alerts</span>
+                  <strong className="pos-kpi-value" style={{ color: "#D97706" }}>
                     {financialMetrics.lowStockProducts.length} SKUs
                   </strong>
-                  <span className="pos-kpi-sub">Below minimum threshold</span>
+                  <span className="pos-kpi-sub">Below Min Reorder Rule</span>
                 </div>
               </div>
 
-              {/* Filter Bar */}
-              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
-                <input
-                  type="text"
-                  value={invSearch}
-                  onChange={(e) => setInvSearch(e.target.value)}
-                  placeholder="Search SKU, Product Name, Barcode, or Supplier..."
-                  className="pos-input"
-                  style={{ maxWidth: "360px" }}
-                />
-                <div className="pos-segmented-control">
-                  <button
-                    type="button"
-                    onClick={() => setInvStockFilter("all")}
-                    className={`pos-segment-btn ${invStockFilter === "all" ? "active" : ""}`}
-                  >
-                    All SKUs ({products.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInvStockFilter("low")}
-                    className={`pos-segment-btn ${invStockFilter === "low" ? "active" : ""}`}
-                  >
-                    Low Stock ({financialMetrics.lowStockProducts.length})
-                  </button>
-                </div>
-              </div>
-
-              {/* Inventory Table */}
               <div className="pos-table-container">
                 <table className="pos-table">
                   <thead>
                     <tr>
-                      <th>SKU / Barcode</th>
-                      <th>Product Name & Category</th>
+                      <th>Internal Ref / Barcode</th>
+                      <th>Product Name</th>
+                      <th>POS Category</th>
+                      <th>Sales Price</th>
+                      <th>B2B Wholesale</th>
                       <th>Cost</th>
-                      <th>Wholesale</th>
-                      <th>Retail</th>
-                      <th>Margin</th>
-                      <th>Stock Level</th>
-                      <th>Quick Restock</th>
+                      <th>On Hand</th>
+                      <th>Forecasted</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {products
-                      .filter((p) => {
-                        const q = invSearch.trim().toLowerCase();
-                        const matchQ =
-                          !q ||
-                          p.name.toLowerCase().includes(q) ||
-                          p.sku.toLowerCase().includes(q) ||
-                          p.barcode.includes(q);
-                        const matchStock =
-                          invStockFilter === "all" || p.stock <= p.minStock;
-                        return matchQ && matchStock;
-                      })
-                      .map((p) => {
-                        const marginPct =
-                          p.retailPrice > 0
-                            ? (((p.retailPrice - p.costPrice) / p.retailPrice) * 100).toFixed(1)
-                            : "0.0";
-                        const isLow = p.stock <= p.minStock;
-
-                        return (
-                          <tr key={p.id}>
-                            <td className="pos-mono">
-                              <div style={{ fontWeight: 700, color: "#F8FAFC" }}>{p.sku}</div>
-                              <div style={{ fontSize: "11px", color: "#64748B" }}>{p.barcode}</div>
-                            </td>
-                            <td>
-                              <div style={{ fontWeight: 700, color: "#F8FAFC" }}>{p.name}</div>
-                              <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-                                {p.category} • Exp: {p.expiryDate}
-                              </div>
-                            </td>
-                            <td className="pos-mono">{formatMoney(p.costPrice)}</td>
-                            <td className="pos-mono" style={{ color: "#38BDF8" }}>
-                              {formatMoney(p.wholesalePrice)}
-                            </td>
-                            <td className="pos-mono" style={{ fontWeight: 700, color: "#10B981" }}>
-                              {formatMoney(p.retailPrice)}
-                            </td>
-                            <td className="pos-mono">
-                              <span className="pos-margin-pill">{marginPct}%</span>
-                            </td>
-                            <td>
-                              <span
-                                className={`pos-stock-badge ${
-                                  p.stock <= 0
-                                    ? "stock-out"
-                                    : isLow
-                                    ? "stock-low"
-                                    : "stock-ok"
-                                }`}
-                              >
-                                {p.stock} {p.unit}
+                    {products.map((p) => (
+                      <tr key={p.id}>
+                        <td className="pos-mono">
+                          <div style={{ fontWeight: 700, color: "#0F172A" }}>{p.sku}</div>
+                          <div style={{ fontSize: "11px", color: "#64748B" }}>{p.barcode}</div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: "#0F172A" }}>
+                            {p.name}
+                            {p.toWeight && (
+                              <span className="pos-scale-pill" style={{ marginLeft: "6px" }}>
+                                To Weigh (kg)
                               </span>
-                            </td>
-                            <td>
-                              <div style={{ display: "flex", gap: "5px" }}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setProducts((prev) =>
-                                      prev.map((item) =>
-                                        item.id === p.id
-                                          ? { ...item, stock: item.stock + 10 }
-                                          : item
-                                      )
-                                    );
-                                    showToast(`Added +10 ${p.unit} to ${p.name}`, "success");
-                                  }}
-                                  className="pos-btn-secondary"
-                                  style={{ padding: "4px 8px", fontSize: "11px" }}
-                                >
-                                  +10
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setProducts((prev) =>
-                                      prev.map((item) =>
-                                        item.id === p.id
-                                          ? { ...item, stock: item.stock + 50 }
-                                          : item
-                                      )
-                                    );
-                                    showToast(`Added +50 ${p.unit} to ${p.name}`, "success");
-                                  }}
-                                  className="pos-btn-secondary"
-                                  style={{ padding: "4px 8px", fontSize: "11px" }}
-                                >
-                                  +50
-                                </button>
-                              </div>
-                            </td>
-                            <td>
-                              <div style={{ display: "flex", gap: "6px" }}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingProduct(p);
-                                    setIsProductModalOpen(true);
-                                  }}
-                                  className="pos-btn-secondary"
-                                  style={{ padding: "5px 8px", fontSize: "11px" }}
-                                  title="Edit Product"
-                                >
-                                  <Edit3 size={13} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setBarcodeLabelProduct(p)}
-                                  className="pos-btn-secondary"
-                                  style={{ padding: "5px 8px", fontSize: "11px" }}
-                                  title="Print Barcode Sticker Labels"
-                                >
-                                  <ScanBarcode size={13} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================== */}
-          {/* MODULE 3: SALES HISTORY, INVOICES & 1-CLICK RETURNS            */}
-          {/* ============================================================== */}
-          {activeModule === "orders" && (
-            <div className="pos-module-page">
-              <div className="pos-module-header">
-                <div>
-                  <h2 className="pos-module-title">
-                    Completed Sales Invoices, Receipt Reprints & Automated Refunds
-                  </h2>
-                  <p className="pos-module-subtitle">
-                    Inspect itemized invoices, reprint 80mm thermal receipts, or process 1-click returns that automatically restore stock to inventory.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleExportCsv}
-                  className="pos-btn-secondary"
-                >
-                  <Download size={15} />
-                  <span>Export Sales CSV</span>
-                </button>
-              </div>
-
-              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
-                <input
-                  type="text"
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                  placeholder="Search Invoice ID (e.g. INV-2026-1001) or Customer..."
-                  className="pos-input"
-                  style={{ maxWidth: "360px" }}
-                />
-                <select
-                  value={orderFilterMethod}
-                  onChange={(e) => setOrderFilterMethod(e.target.value)}
-                  className="pos-input"
-                  style={{ maxWidth: "200px" }}
-                >
-                  <option value="All">All Payment Tenders</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Card">Card</option>
-                  <option value="Mobile QR Wallet">Mobile QR Wallet</option>
-                  <option value="Customer Credit">Customer Credit</option>
-                  <option value="Split (Cash + Card)">Split (Cash + Card)</option>
-                </select>
-              </div>
-
-              <div className="pos-table-container">
-                <table className="pos-table">
-                  <thead>
-                    <tr>
-                      <th>Invoice #</th>
-                      <th>Date & Time</th>
-                      <th>Customer</th>
-                      <th>Tier</th>
-                      <th>Payment Method</th>
-                      <th>Items</th>
-                      <th>Total Amount</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders
-                      .filter((o) => {
-                        const q = orderSearch.trim().toLowerCase();
-                        const matchQ =
-                          !q ||
-                          o.id.toLowerCase().includes(q) ||
-                          o.customerName.toLowerCase().includes(q);
-                        const matchMethod =
-                          orderFilterMethod === "All" ||
-                          o.paymentMethod === orderFilterMethod;
-                        return matchQ && matchMethod;
-                      })
-                      .map((order) => (
-                        <tr key={order.id}>
-                          <td className="pos-mono" style={{ fontWeight: 700, color: "#60A5FA" }}>
-                            {order.id}
-                          </td>
-                          <td style={{ fontSize: "12px", color: "#94A3B8" }}>
-                            {new Date(order.timestamp).toLocaleString()}
-                          </td>
-                          <td style={{ fontWeight: 600, color: "#F8FAFC" }}>
-                            {order.customerName}
-                          </td>
-                          <td>
-                            <span className="pos-sku-tag" style={{ textTransform: "uppercase" }}>
-                              {order.pricingMode}
-                            </span>
-                          </td>
-                          <td>{order.paymentMethod}</td>
-                          <td className="pos-mono">
-                            {order.items.reduce((s, i) => s + i.qty, 0)} units
-                          </td>
-                          <td className="pos-mono" style={{ fontWeight: 800, color: "#10B981" }}>
-                            {formatMoney(order.total)}
-                          </td>
-                          <td>
-                            <span
-                              className={`pos-stock-badge ${
-                                order.status === "Refunded"
-                                  ? "stock-out"
-                                  : "stock-ok"
-                              }`}
-                            >
-                              {order.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div style={{ display: "flex", gap: "6px" }}>
-                              <button
-                                type="button"
-                                onClick={() => setActiveReceiptOrder(order)}
-                                className="pos-btn-secondary"
-                                style={{ padding: "5px 10px", fontSize: "11.5px" }}
-                              >
-                                <Printer size={13} />
-                                <span>Receipt</span>
-                              </button>
-                              {order.status !== "Refunded" && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRefundOrder(order)}
-                                  className="pos-btn-secondary"
-                                  style={{
-                                    padding: "5px 10px",
-                                    fontSize: "11.5px",
-                                    color: "#FCA5A5",
-                                    borderColor: "rgba(239,68,68,0.35)",
-                                  }}
-                                >
-                                  <RotateCcw size={13} />
-                                  <span>Refund & Restock</span>
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================== */}
-          {/* MODULE 4: CUSTOMERS, LOYALTY & CREDIT LEDGER (KHATA)           */}
-          {/* ============================================================== */}
-          {activeModule === "customers" && (
-            <div className="pos-module-page">
-              <div className="pos-module-header">
-                <div>
-                  <h2 className="pos-module-title">
-                    Customer CRM, VIP Loyalty Points & Credit Ledger (Receivables)
-                  </h2>
-                  <p className="pos-module-subtitle">
-                    Track regular shoppers and B2B wholesale accounts, manage credit limits, and settle outstanding customer balances.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomerModalOpen(true)}
-                  className="pos-btn-primary"
-                >
-                  <Plus size={15} />
-                  <span>Add New Customer Account</span>
-                </button>
-              </div>
-
-              <div className="pos-table-container">
-                <table className="pos-table">
-                  <thead>
-                    <tr>
-                      <th>Customer Name</th>
-                      <th>Phone & Email</th>
-                      <th>Membership Tier</th>
-                      <th>Loyalty Points</th>
-                      <th>Total Lifetime Spent</th>
-                      <th>Credit Balance Due</th>
-                      <th>Credit Limit</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customers.map((c) => (
-                      <tr key={c.id}>
-                        <td style={{ fontWeight: 700, color: "#F8FAFC" }}>{c.name}</td>
-                        <td style={{ fontSize: "12px", color: "#94A3B8" }}>
-                          <div>{c.phone}</div>
-                          <div>{c.email}</div>
+                            )}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#64748B" }}>
+                            {p.productType || "Storable Product"} • {p.warehouseLocation || "WH/Stock"}
+                          </div>
                         </td>
                         <td>
-                          <span className="pos-margin-pill">{c.tier}</span>
+                          <span className="pos-sku-tag">{p.category}</span>
                         </td>
-                        <td className="pos-mono" style={{ color: "#10B981", fontWeight: 700 }}>
-                          {c.loyaltyPoints.toLocaleString()} pts
+                        <td className="pos-mono" style={{ fontWeight: 800, color: "#017E84" }}>
+                          {formatMoney(p.retailPrice)}
                         </td>
-                        <td className="pos-mono">{formatMoney(c.totalSpent)}</td>
-                        <td
-                          className="pos-mono"
-                          style={{
-                            fontWeight: 800,
-                            color: c.creditBalance > 0 ? "#F59E0B" : "#94A3B8",
-                          }}
-                        >
-                          {formatMoney(c.creditBalance)}
-                        </td>
-                        <td className="pos-mono">{formatMoney(c.creditLimit)}</td>
+                        <td className="pos-mono">{formatMoney(p.wholesalePrice)}</td>
+                        <td className="pos-mono">{formatMoney(p.costPrice)}</td>
                         <td>
-                          {c.creditBalance > 0 ? (
+                          <span
+                            className={`pos-stock-badge ${
+                              p.stock <= 0
+                                ? "stock-out"
+                                : p.stock <= p.minStock
+                                ? "stock-low"
+                                : "stock-ok"
+                            }`}
+                          >
+                            {p.stock} {p.unit}
+                          </span>
+                        </td>
+                        <td className="pos-mono">
+                          {p.forecastedStock || p.stock} {p.unit}
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: "6px" }}>
                             <button
                               type="button"
                               onClick={() => {
-                                setSettlingCustomer(c);
-                                setSettleAmount(c.creditBalance.toFixed(2));
+                                setEditingProduct(p);
+                                setProductFormTab("general");
+                                setIsProductModalOpen(true);
                               }}
-                              className="pos-btn-primary"
+                              className="pos-btn-secondary"
                               style={{ padding: "5px 10px", fontSize: "11.5px" }}
                             >
-                              <Banknote size={13} />
-                              <span>Settle Credit</span>
+                              <Edit3 size={13} />
+                              <span>Odoo Form</span>
                             </button>
-                          ) : (
-                            <span style={{ fontSize: "11px", color: "#64748B" }}>
-                              No Balance Due
-                            </span>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() => setBarcodeLabelProduct(p)}
+                              className="pos-btn-secondary"
+                              style={{ padding: "5px 8px", fontSize: "11.5px" }}
+                              title="Print Barcode Labels"
+                            >
+                              <ScanBarcode size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2086,30 +1736,223 @@ export default function PosTerminal({
           )}
 
           {/* ============================================================== */}
-          {/* MODULE 5: SUPPLIERS & STOCK-IN PURCHASE ORDERS                 */}
+          {/* MODULE 3: ORDERS (`pos.order`) & REFUNDS                       */}
+          {/* ============================================================== */}
+          {activeModule === "orders" && (
+            <div className="pos-module-page">
+              <div className="pos-module-header">
+                <div>
+                  <h2 className="pos-module-title">
+                    POS Orders (`pos.order`), Tax Invoices & Refund / Credit Notes
+                  </h2>
+                  <p className="pos-module-subtitle">
+                    View all session orders, reprint 80mm thermal receipts, or issue an Odoo Credit Note / Refund that reverses the warehouse stock move.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pos-table-container">
+                <table className="pos-table">
+                  <thead>
+                    <tr>
+                      <th>Order Ref</th>
+                      <th>Invoice Number</th>
+                      <th>Date</th>
+                      <th>Customer / Partner</th>
+                      <th>Pricelist</th>
+                      <th>Payment Method</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => (
+                      <tr key={order.id}>
+                        <td className="pos-mono" style={{ fontWeight: 800, color: "#714B67" }}>
+                          {order.id}
+                        </td>
+                        <td className="pos-mono">{order.invoiceRef || "Receipt"}</td>
+                        <td style={{ fontSize: "12px", color: "#64748B" }}>
+                          {new Date(order.timestamp).toLocaleString()}
+                        </td>
+                        <td style={{ fontWeight: 700, color: "#0F172A" }}>
+                          {order.customerName}
+                        </td>
+                        <td style={{ fontSize: "12px" }}>
+                          {order.pricelistName || "Public Pricelist"}
+                        </td>
+                        <td>{order.paymentMethod}</td>
+                        <td className="pos-mono" style={{ fontWeight: 800, color: "#017E84" }}>
+                          {formatMoney(order.total)}
+                        </td>
+                        <td>
+                          <span
+                            className={`pos-stock-badge ${
+                              order.status === "Refunded" ? "stock-out" : "stock-ok"
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button
+                              type="button"
+                              onClick={() => setActiveReceiptOrder(order)}
+                              className="pos-btn-secondary"
+                              style={{ padding: "5px 10px", fontSize: "11.5px" }}
+                            >
+                              <Printer size={13} />
+                              <span>Receipt</span>
+                            </button>
+                            {order.status !== "Refunded" && (
+                              <button
+                                type="button"
+                                onClick={() => handleRefundOrder(order)}
+                                className="pos-btn-secondary"
+                                style={{
+                                  padding: "5px 10px",
+                                  fontSize: "11.5px",
+                                  color: "#DC2626",
+                                  borderColor: "#FCA5A5",
+                                }}
+                              >
+                                <RotateCcw size={13} />
+                                <span>Refund Order</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODULE 4: CUSTOMERS / PARTNERS (`res.partner`)                 */}
+          {/* ============================================================== */}
+          {activeModule === "customers" && (
+            <div className="pos-module-page">
+              <div className="pos-module-header">
+                <div>
+                  <h2 className="pos-module-title">
+                    Customers / Partners (`res.partner`) — Pricelists, Loyalty & Receivables
+                  </h2>
+                  <p className="pos-module-subtitle">
+                    Manage customer addresses, tax IDs (VAT), default pricelists, loyalty points, and credit balances.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomerModalOpen(true)}
+                  className="pos-btn-primary"
+                >
+                  <Plus size={15} />
+                  <span>Create Partner</span>
+                </button>
+              </div>
+
+              <div className="pos-table-container">
+                <table className="pos-table">
+                  <thead>
+                    <tr>
+                      <th>Partner Name</th>
+                      <th>Phone & Email</th>
+                      <th>Address & VAT</th>
+                      <th>Assigned Pricelist</th>
+                      <th>Loyalty Points</th>
+                      <th>Receivable Balance</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((c) => {
+                      const pl = ODOO_PRICELISTS.find((p) => p.id === c.pricelistId);
+                      return (
+                        <tr key={c.id}>
+                          <td style={{ fontWeight: 800, color: "#0F172A" }}>{c.name}</td>
+                          <td style={{ fontSize: "12px" }}>
+                            <div>{c.phone}</div>
+                            <div style={{ color: "#64748B" }}>{c.email}</div>
+                          </td>
+                          <td style={{ fontSize: "12px" }}>
+                            <div>{c.address || "Main Street"}</div>
+                            <div style={{ color: "#64748B" }}>Tax ID: {c.vatNumber || "N/A"}</div>
+                          </td>
+                          <td>
+                            <span className="pos-sku-tag">
+                              {pl ? pl.name.split(" (")[0] : c.tier}
+                            </span>
+                          </td>
+                          <td className="pos-mono" style={{ color: "#059669", fontWeight: 700 }}>
+                            {c.loyaltyPoints} pts
+                          </td>
+                          <td
+                            className="pos-mono"
+                            style={{
+                              fontWeight: 800,
+                              color: c.creditBalance > 0 ? "#D97706" : "#64748B",
+                            }}
+                          >
+                            {formatMoney(c.creditBalance)}
+                          </td>
+                          <td>
+                            {c.creditBalance > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSettlingCustomer(c);
+                                  setSettleAmount(c.creditBalance.toFixed(2));
+                                }}
+                                className="pos-btn-primary"
+                                style={{ padding: "5px 10px", fontSize: "11.5px" }}
+                              >
+                                <Banknote size={13} />
+                                <span>Register Payment</span>
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: "11.5px", color: "#64748B" }}>
+                                Settled
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODULE 5: PURCHASE ORDERS & WAREHOUSE RECEIPTS                 */}
           {/* ============================================================== */}
           {activeModule === "suppliers" && (
             <div className="pos-module-page">
               <div className="pos-module-header">
                 <div>
                   <h2 className="pos-module-title">
-                    Suppliers Directory & Instant Stock-In Purchase Orders
+                    Purchase Orders (`purchase.order`) & Warehouse Stock Receipts (`WH/In`)
                   </h2>
                   <p className="pos-module-subtitle">
-                    Receive incoming inventory shipments from distributors and automatically increment live warehouse stock counts.
+                    Receive products from vendors and immediately increase On-Hand & Forecasted warehouse quantities.
                   </p>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "18px", marginBottom: "22px" }}>
-                {/* Receive Stock Form Card */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "18px" }}>
                 <div className="pos-card-panel">
-                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#F8FAFC" }}>
-                    Receive New Stock Shipment (Purchase Order)
+                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 800, color: "#0F172A" }}>
+                    Validate Incoming Shipment (`WH/In`)
                   </h3>
                   <form onSubmit={handleReceiveStockOrder} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     <div>
-                      <label className="pos-field-label">Select Product SKU to Restock</label>
+                      <label className="pos-field-label">Product to Receive</label>
                       <select
                         value={stockInProductId}
                         onChange={(e) => setStockInProductId(e.target.value)}
@@ -2117,13 +1960,13 @@ export default function PosTerminal({
                       >
                         {products.map((p) => (
                           <option key={p.id} value={p.id}>
-                            [{p.sku}] {p.name} (Current Stock: {p.stock} {p.unit})
+                            [{p.sku}] {p.name} (On Hand: {p.stock} {p.unit})
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="pos-field-label">Quantity Received</label>
+                      <label className="pos-field-label">Quantity Done</label>
                       <input
                         type="number"
                         min="1"
@@ -2135,312 +1978,170 @@ export default function PosTerminal({
                     </div>
                     <button type="submit" className="pos-btn-primary" style={{ justifyContent: "center" }}>
                       <Truck size={15} />
-                      <span>Receive Stock & Update Inventory</span>
+                      <span>Validate Receipt & Update Stock</span>
                     </button>
                   </form>
                 </div>
 
-                {/* Recent Stock-In Log */}
                 <div className="pos-card-panel">
-                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#F8FAFC" }}>
-                    Recent Stock-In Purchase Orders
+                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 800, color: "#0F172A" }}>
+                    Validated Purchase Receipts
                   </h3>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {stockInHistory.map((po) => (
                       <div key={po.id} className="pos-mini-stat-box">
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "13px", color: "#F8FAFC" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "13px" }}>
                           <span>{po.productName}</span>
-                          <span style={{ color: "#10B981", fontFamily: "monospace" }}>
-                            +{po.qty} units ({formatMoney(po.totalCost)})
+                          <span style={{ color: "#059669", fontFamily: "monospace" }}>
+                            +{po.qty} Units ({formatMoney(po.totalCost)})
                           </span>
                         </div>
-                        <div style={{ fontSize: "11.5px", color: "#94A3B8", marginTop: "3px" }}>
-                          {po.id} • Supplier: {po.supplier} • {new Date(po.timestamp).toLocaleTimeString()}
+                        <div style={{ fontSize: "11.5px", color: "#64748B", marginTop: "3px" }}>
+                          {po.id} • Vendor: {po.supplier}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-
-              {/* Suppliers Table */}
-              <div className="pos-table-container">
-                <table className="pos-table">
-                  <thead>
-                    <tr>
-                      <th>Supplier Name</th>
-                      <th>Contact Person</th>
-                      <th>Phone</th>
-                      <th>Email</th>
-                      <th>Department</th>
-                      <th>Lead Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {suppliers.map((s) => (
-                      <tr key={s.id}>
-                        <td style={{ fontWeight: 700, color: "#F8FAFC" }}>{s.name}</td>
-                        <td>{s.contactPerson}</td>
-                        <td className="pos-mono">{s.phone}</td>
-                        <td>{s.email}</td>
-                        <td>
-                          <span className="pos-sku-tag">{s.category}</span>
-                        </td>
-                        <td className="pos-mono">{s.leadTimeDays} Day(s)</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
 
           {/* ============================================================== */}
-          {/* MODULE 6: CASH DRAWER, EXPENSES & SHIFT Z-REPORT               */}
+          {/* MODULE 6: CASH IN/OUT & SESSION CLOSING Z-REPORT               */}
           {/* ============================================================== */}
           {activeModule === "drawer" && (
             <div className="pos-module-page">
               <div className="pos-module-header">
                 <div>
                   <h2 className="pos-module-title">
-                    Cash Drawer Reconciliation, Petty Expenses & Shift Z-Report
+                    Session Cash Control, Cash In/Out Log & Z-Report
                   </h2>
                   <p className="pos-module-subtitle">
-                    Monitor physical drawer cash, log daily store operating expenses, and print end-of-shift Z-Reports.
+                    Reconcile opening cash, cash sales, and petty Cash In / Cash Out movements.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="pos-btn-primary"
-                >
-                  <Printer size={15} />
-                  <span>Print Shift Z-Report</span>
-                </button>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setCashInOutModalOpen(true)}
+                    className="pos-btn-secondary"
+                  >
+                    <ArrowRightLeft size={15} />
+                    <span>New Cash In / Out</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="pos-btn-primary"
+                  >
+                    <Printer size={15} />
+                    <span>Print Session Z-Report</span>
+                  </button>
+                </div>
               </div>
 
               <div className="pos-kpi-grid">
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Opening Cash Float</span>
+                  <span className="pos-kpi-label">Opening Cash Control</span>
                   <strong className="pos-kpi-value">
                     {formatMoney(storeSettings?.openingCashFloat || 500)}
                   </strong>
-                  <span className="pos-kpi-sub">Starting register drawer cash</span>
+                  <span className="pos-kpi-sub">Session Starting Float</span>
                 </div>
                 <div className="pos-kpi-card">
                   <span className="pos-kpi-label">Cash Sales Collected</span>
-                  <strong className="pos-kpi-value" style={{ color: "#10B981" }}>
+                  <strong className="pos-kpi-value" style={{ color: "#059669" }}>
                     +{formatMoney(financialMetrics.cashSales + financialMetrics.splitSales * 0.5)}
                   </strong>
-                  <span className="pos-kpi-sub">Includes cash portion of split orders</span>
+                  <span className="pos-kpi-sub">From POS Cash Journal</span>
                 </div>
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Petty Cash Expenses</span>
-                  <strong className="pos-kpi-value" style={{ color: "#EF4444" }}>
-                    -{formatMoney(financialMetrics.totalExpenses)}
+                  <span className="pos-kpi-label">Net Cash In / Out</span>
+                  <strong className="pos-kpi-value" style={{ color: "#D97706" }}>
+                    {formatMoney(financialMetrics.cashInTotal - financialMetrics.cashOutTotal)}
                   </strong>
-                  <span className="pos-kpi-sub">{expenses.length} recorded payouts</span>
+                  <span className="pos-kpi-sub">{expenses.length} drawer movements</span>
                 </div>
-                <div className="pos-kpi-card" style={{ borderColor: "rgba(59,130,246,0.5)" }}>
-                  <span className="pos-kpi-label">Expected Cash in Drawer</span>
-                  <strong className="pos-kpi-value" style={{ color: "#60A5FA" }}>
+                <div className="pos-kpi-card">
+                  <span className="pos-kpi-label">Expected in Cash Drawer</span>
+                  <strong className="pos-kpi-value" style={{ color: "#714B67" }}>
                     {formatMoney(financialMetrics.expectedDrawerCash)}
                   </strong>
-                  <span className="pos-kpi-sub">Float + Cash Sales - Expenses</span>
+                  <span className="pos-kpi-sub">Ready for Session Closing</span>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "18px" }}>
-                {/* Record Store Expense */}
-                <div className="pos-card-panel">
-                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#F8FAFC" }}>
-                    Log Petty Cash Store Expense
-                  </h3>
-                  <form onSubmit={handleAddExpense} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    <div>
-                      <label className="pos-field-label">Expense Description</label>
-                      <input
-                        type="text"
-                        value={expenseTitle}
-                        onChange={(e) => setExpenseTitle(e.target.value)}
-                        placeholder="e.g., Packaging Bags, Utility Bill, Staff Refreshment"
-                        className="pos-input"
-                        required
-                      />
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div className="pos-card-panel">
+                <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 800 }}>
+                  Cash In / Cash Out Register Log
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {expenses.map((exp) => (
+                    <div key={exp.id} className="pos-mini-stat-box" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
-                        <label className="pos-field-label">Category</label>
-                        <select
-                          value={expenseCategory}
-                          onChange={(e) => setExpenseCategory(e.target.value)}
-                          className="pos-input"
+                        <span
+                          className={`pos-stock-badge ${
+                            exp.type === "Cash In" ? "stock-ok" : "stock-out"
+                          }`}
+                          style={{ marginRight: "8px" }}
                         >
-                          <option value="Store Supplies">Store Supplies</option>
-                          <option value="Utilities">Utilities & Electricity</option>
-                          <option value="Maintenance">Maintenance</option>
-                          <option value="Logistics">Delivery & Logistics</option>
-                        </select>
+                          {exp.type || "Cash Out"}
+                        </span>
+                        <strong style={{ color: "#0F172A" }}>{exp.title}</strong>
                       </div>
-                      <div>
-                        <label className="pos-field-label">Amount ({currency.trim()})</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          value={expenseAmount}
-                          onChange={(e) => setExpenseAmount(e.target.value)}
-                          placeholder="0.00"
-                          className="pos-input"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <button type="submit" className="pos-btn-primary" style={{ justifyContent: "center" }}>
-                      <Plus size={15} />
-                      <span>Record Store Expense</span>
-                    </button>
-                  </form>
-
-                  <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {expenses.map((exp) => (
-                      <div key={exp.id} className="pos-mini-stat-box">
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "13px" }}>
-                          <span>{exp.title}</span>
-                          <span style={{ color: "#FCA5A5", fontFamily: "monospace" }}>
-                            -{formatMoney(exp.amount)}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-                          {exp.category} • Logged by {exp.recordedBy}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Shift Z-Report Summary Card */}
-                <div className="pos-card-panel">
-                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#F8FAFC" }}>
-                    Official Shift Z-Report Audit Summary
-                  </h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "9px", fontSize: "13px" }}>
-                    <div className="pos-summary-row">
-                      <span>Completed Invoices</span>
-                      <strong className="pos-mono">{financialMetrics.activeOrderCount}</strong>
-                    </div>
-                    <div className="pos-summary-row">
-                      <span>Gross Sales Revenue (Incl. Tax)</span>
-                      <strong className="pos-mono">{formatMoney(financialMetrics.grossRevenue)}</strong>
-                    </div>
-                    <div className="pos-summary-row">
-                      <span>Sales Tax Collected</span>
-                      <strong className="pos-mono">{formatMoney(financialMetrics.totalTaxCollected)}</strong>
-                    </div>
-                    <div className="pos-summary-row">
-                      <span>Cost of Goods Sold (COGS)</span>
-                      <strong className="pos-mono">-{formatMoney(financialMetrics.totalCogs)}</strong>
-                    </div>
-                    <div className="pos-summary-row" style={{ color: "#10B981" }}>
-                      <span>Gross Margin Profit</span>
-                      <strong className="pos-mono">{formatMoney(financialMetrics.grossProfit)}</strong>
-                    </div>
-                    <div className="pos-summary-row" style={{ color: "#FCA5A5" }}>
-                      <span>Operating Store Expenses</span>
-                      <strong className="pos-mono">-{formatMoney(financialMetrics.totalExpenses)}</strong>
-                    </div>
-                    <div className="pos-grand-total-row" style={{ marginTop: "6px" }}>
-                      <span>NET SHIFT PROFIT</span>
-                      <span className="pos-grand-total-val">
-                        {formatMoney(financialMetrics.netProfit)}
+                      <span className="pos-mono" style={{ fontWeight: 800 }}>
+                        {exp.type === "Cash In" ? "+" : "-"}
+                        {formatMoney(exp.amount)}
                       </span>
                     </div>
-
-                    <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid rgba(148,163,184,0.14)" }}>
-                      <div style={{ fontSize: "11.5px", fontWeight: 700, color: "#94A3B8", marginBottom: "8px", textTransform: "uppercase" }}>
-                        Tender Breakdown
-                      </div>
-                      <div className="pos-summary-row">
-                        <span>Cash Tender</span>
-                        <span className="pos-mono">{formatMoney(financialMetrics.cashSales)}</span>
-                      </div>
-                      <div className="pos-summary-row">
-                        <span>Card POS Terminal</span>
-                        <span className="pos-mono">{formatMoney(financialMetrics.cardSales)}</span>
-                      </div>
-                      <div className="pos-summary-row">
-                        <span>Mobile QR Wallet</span>
-                        <span className="pos-mono">{formatMoney(financialMetrics.qrSales)}</span>
-                      </div>
-                      <div className="pos-summary-row">
-                        <span>Split Tender (Cash + Card)</span>
-                        <span className="pos-mono">{formatMoney(financialMetrics.splitSales)}</span>
-                      </div>
-                      <div className="pos-summary-row">
-                        <span>Customer Credit Ledger</span>
-                        <span className="pos-mono">{formatMoney(financialMetrics.creditSales)}</span>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
 
           {/* ============================================================== */}
-          {/* MODULE 7: ANALYTICS & ANIMATED ARCHITECTURE DIAGRAMS           */}
+          {/* MODULE 7: REPORTING & ANIMATED ARCHITECTURE DIAGRAMS           */}
           {/* ============================================================== */}
           {activeModule === "analytics" && (
             <div className="pos-module-page">
               <div className="pos-module-header">
                 <div>
                   <h2 className="pos-module-title">
-                    Executive Business Intelligence & Live System Architecture Diagrams
+                    Odoo POS Reporting & Interactive Animated Architecture Diagrams
                   </h2>
                   <p className="pos-module-subtitle">
-                    Real-time revenue telemetry, net margin waterfall, and interactive animated POS data-flow diagrams.
+                    Real-time sales analytics and animated system diagrams.
                   </p>
                 </div>
               </div>
 
               <div className="pos-kpi-grid">
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Gross Revenue</span>
-                  <strong className="pos-kpi-value" style={{ color: "#10B981" }}>
+                  <span className="pos-kpi-label">Gross Sales Revenue</span>
+                  <strong className="pos-kpi-value" style={{ color: "#017E84" }}>
                     {formatMoney(financialMetrics.grossRevenue)}
                   </strong>
-                  <span className="pos-kpi-sub">
-                    {financialMetrics.activeOrderCount} completed transactions
-                  </span>
+                  <span className="pos-kpi-sub">{financialMetrics.activeOrderCount} Orders</span>
                 </div>
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Net Profit (After COGS & Exp)</span>
-                  <strong className="pos-kpi-value" style={{ color: "#38BDF8" }}>
+                  <span className="pos-kpi-label">Net Profit Margin</span>
+                  <strong className="pos-kpi-value" style={{ color: "#059669" }}>
                     {formatMoney(financialMetrics.netProfit)}
                   </strong>
-                  <span className="pos-kpi-sub">
-                    COGS: {formatMoney(financialMetrics.totalCogs)}
-                  </span>
+                  <span className="pos-kpi-sub">After COGS & Cash Out</span>
                 </div>
                 <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Average Basket Value</span>
+                  <span className="pos-kpi-label">Average Order Value</span>
                   <strong className="pos-kpi-value">
                     {formatMoney(financialMetrics.avgOrderValue)}
                   </strong>
-                  <span className="pos-kpi-sub">Retail + Wholesale blended</span>
-                </div>
-                <div className="pos-kpi-card">
-                  <span className="pos-kpi-label">Customer Credit Receivables</span>
-                  <strong className="pos-kpi-value" style={{ color: "#F59E0B" }}>
-                    {formatMoney(
-                      customers.reduce((s, c) => s + c.creditBalance, 0)
-                    )}
-                  </strong>
-                  <span className="pos-kpi-sub">Active B2B & VIP ledger</span>
+                  <span className="pos-kpi-sub">Across all pricelists</span>
                 </div>
               </div>
 
-              <div style={{ marginBottom: "24px" }}>
+              <div style={{ marginBottom: "22px" }}>
                 <HeroArchitectureDiagram />
               </div>
 
@@ -2449,44 +2150,34 @@ export default function PosTerminal({
           )}
 
           {/* ============================================================== */}
-          {/* MODULE 8: STORE SETTINGS, BACKUP & CLOUD DEPLOY                */}
+          {/* MODULE 8: CONFIGURATION / POS SETTINGS                         */}
           {/* ============================================================== */}
           {activeModule === "settings" && (
             <div className="pos-module-page">
               <div className="pos-module-header">
                 <div>
                   <h2 className="pos-module-title">
-                    Store Configuration, Database Backup & Cloud Deployment
+                    Point of Sale Configuration (`res.config.settings`)
                   </h2>
                   <p className="pos-module-subtitle">
-                    Customize your store identity, tax rate, receipt footer, JSON/CSV backups, and GitHub/Vercel deployment settings.
+                    Configure store details, default taxes, receipt header/footer, and database reset.
                   </p>
                 </div>
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={handleExportJson}
-                    className="pos-btn-secondary"
-                  >
-                    <Download size={15} />
-                    <span>Export Full JSON Backup</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onResetDemoData}
-                    className="pos-btn-secondary"
-                    style={{ color: "#FCA5A5" }}
-                  >
-                    <RotateCcw size={15} />
-                    <span>Reset Demo Data</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={onResetDemoData}
+                  className="pos-btn-secondary"
+                  style={{ color: "#DC2626" }}
+                >
+                  <RotateCcw size={14} />
+                  <span>Reset Demo Database</span>
+                </button>
               </div>
 
               <div className="pos-card-panel" style={{ maxWidth: "740px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <div>
-                    <label className="pos-field-label">Store / Brand Name</label>
+                    <label className="pos-field-label">Point of Sale Name</label>
                     <input
                       type="text"
                       value={storeSettings?.storeName || ""}
@@ -2497,7 +2188,7 @@ export default function PosTerminal({
                     />
                   </div>
                   <div>
-                    <label className="pos-field-label">Branch / Terminal Name</label>
+                    <label className="pos-field-label">Session / Shop Floor Name</label>
                     <input
                       type="text"
                       value={storeSettings?.branchName || ""}
@@ -2507,49 +2198,8 @@ export default function PosTerminal({
                       className="pos-input"
                     />
                   </div>
-                  <div>
-                    <label className="pos-field-label">Default Sales Tax / GST (%)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={storeSettings?.taxRate ?? 8}
-                      onChange={(e) =>
-                        setStoreSettings((p) => ({
-                          ...p,
-                          taxRate: Number(e.target.value) || 0,
-                        }))
-                      }
-                      className="pos-input"
-                    />
-                  </div>
-                  <div>
-                    <label className="pos-field-label">Opening Cash Drawer Float ({currency.trim()})</label>
-                    <input
-                      type="number"
-                      step="1"
-                      value={storeSettings?.openingCashFloat ?? 500}
-                      onChange={(e) =>
-                        setStoreSettings((p) => ({
-                          ...p,
-                          openingCashFloat: Number(e.target.value) || 0,
-                        }))
-                      }
-                      className="pos-input"
-                    />
-                  </div>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="pos-field-label">Store Address (Printed on 80mm Receipt)</label>
-                    <input
-                      type="text"
-                      value={storeSettings?.address || ""}
-                      onChange={(e) =>
-                        setStoreSettings((p) => ({ ...p, address: e.target.value }))
-                      }
-                      className="pos-input"
-                    />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label className="pos-field-label">Thermal Receipt Footer Policy</label>
+                    <label className="pos-field-label">Receipt Footer Custom Text</label>
                     <input
                       type="text"
                       value={storeSettings?.receiptFooter || ""}
@@ -2563,27 +2213,6 @@ export default function PosTerminal({
                     />
                   </div>
                 </div>
-
-                <div style={{ marginTop: "18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <button
-                    type="button"
-                    onClick={onOpenDeployModal}
-                    className="pos-btn-secondary"
-                  >
-                    <GitBranch size={15} />
-                    <span>Open GitHub & Vercel Deployment Instructions</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      showToast("Store settings saved to persistent storage!", "success")
-                    }
-                    className="pos-btn-primary"
-                  >
-                    <CheckCircle2 size={15} />
-                    <span>Save Store Settings</span>
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -2591,14 +2220,587 @@ export default function PosTerminal({
       </div>
 
       {/* ================================================================== */}
-      {/* PARKED / HELD BILLS DRAWER MODAL                                   */}
+      {/* ODOO PRODUCT INFORMATION ("i") MODAL                               */}
+      {/* ================================================================== */}
+      {infoModalProduct && (
+        <div className="pos-modal-backdrop" onClick={() => setInfoModalProduct(null)}>
+          <div className="pos-modal-card" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 800, color: "#0F172A" }}>
+                  Product Information — {infoModalProduct.name}
+                </h3>
+                <span style={{ fontSize: "12px", color: "#64748B", fontFamily: "monospace" }}>
+                  Internal Ref: [{infoModalProduct.sku}] • Barcode: {infoModalProduct.barcode}
+                </span>
+              </div>
+              <button type="button" onClick={() => setInfoModalProduct(null)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div className="pos-mini-stat-box">
+                  <div style={{ fontSize: "11px", color: "#64748B", fontWeight: 700 }}>FINANCIALS & PRICING</div>
+                  <div style={{ marginTop: "6px", fontSize: "13px" }}>
+                    <div>Public Price: <strong>{formatMoney(infoModalProduct.retailPrice)}</strong></div>
+                    <div>B2B Wholesale: <strong>{formatMoney(infoModalProduct.wholesalePrice)}</strong></div>
+                    <div>Cost Price: <strong>{formatMoney(infoModalProduct.costPrice)}</strong></div>
+                    <div style={{ color: "#059669", fontWeight: 700 }}>
+                      Margin: {(((infoModalProduct.retailPrice - infoModalProduct.costPrice) / infoModalProduct.retailPrice) * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pos-mini-stat-box">
+                  <div style={{ fontSize: "11px", color: "#64748B", fontWeight: 700 }}>INVENTORY & WAREHOUSE</div>
+                  <div style={{ marginTop: "6px", fontSize: "13px" }}>
+                    <div>Warehouse: <strong>{infoModalProduct.warehouseLocation || "WH/Stock"}</strong></div>
+                    <div>On Hand: <strong style={{ color: "#017E84" }}>{infoModalProduct.stock} {infoModalProduct.unit}</strong></div>
+                    <div>Forecasted: <strong>{infoModalProduct.forecastedStock || infoModalProduct.stock} {infoModalProduct.unit}</strong></div>
+                    <div>Supplier: <strong>{infoModalProduct.supplier}</strong></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pos-modal-footer">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProduct(infoModalProduct);
+                  setInfoModalProduct(null);
+                  setIsProductModalOpen(true);
+                }}
+                className="pos-btn-secondary"
+              >
+                <Edit3 size={14} />
+                <span>Edit in Odoo Product Form</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  addToCart(infoModalProduct, false, 1);
+                  setInfoModalProduct(null);
+                }}
+                className="pos-btn-primary"
+              >
+                <Plus size={14} />
+                <span>Add to Ticket</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* ODOO ELECTRONIC SCALE WEIGHING MODAL                               */}
+      {/* ================================================================== */}
+      {scaleModalProduct && (
+        <div className="pos-modal-backdrop" onClick={() => setScaleModalProduct(null)}>
+          <div className="pos-modal-card" style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Scale size={18} color="#16A34A" />
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
+                  Odoo Electronic Scale — {scaleModalProduct.name}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setScaleModalProduct(null)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "20px", textAlign: "center" }}>
+              <div style={{ background: "#F0FDF4", border: "2px solid #16A34A", borderRadius: "12px", padding: "16px", marginBottom: "14px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 800, color: "#15803D" }}>DIGITAL SCALE READOUT</div>
+                <div className="pos-mono" style={{ fontSize: "32px", fontWeight: 900, color: "#0F172A", margin: "6px 0" }}>
+                  {Number(scaleWeightKg).toFixed(3)} kg
+                </div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#16A34A" }}>
+                  Computed Price: {formatMoney(scaleWeightKg * scaleModalProduct.retailPrice)} ({formatMoney(scaleModalProduct.retailPrice)}/kg)
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
+                {[0.25, 0.5, 0.75, 1.0, 1.5, 2.0].map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setScaleWeightKg(w)}
+                    className="pos-btn-secondary"
+                    style={{ fontFamily: "monospace" }}
+                  >
+                    {w.toFixed(2)} kg
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="pos-modal-footer">
+              <button type="button" onClick={() => setScaleModalProduct(null)} className="pos-btn-secondary">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  addToCart(scaleModalProduct, false, scaleWeightKg);
+                  setScaleModalProduct(null);
+                }}
+                className="pos-btn-primary"
+              >
+                Buy / Add Weighed Item
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* ODOO CUSTOMER NOTE MODAL                                           */}
+      {/* ================================================================== */}
+      {noteModalOpen && selectedLineObj && (
+        <div className="pos-modal-backdrop" onClick={() => setNoteModalOpen(false)}>
+          <div className="pos-modal-card" style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
+                Add Customer Note — {selectedLineObj.name}
+              </h3>
+              <button type="button" onClick={() => setNoteModalOpen(false)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "18px" }}>
+              <input
+                type="text"
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                placeholder="e.g., Gift wrap, Extra cold, Sliced thin, Fragile..."
+                className="pos-input"
+              />
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "10px" }}>
+                {["Gift Wrap", "Extra Cold", "Fragile — Handle with Care", "No Plastic Bag", "Urgent Delivery"].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setNoteDraft(tag)}
+                    className="pos-btn-secondary"
+                    style={{ padding: "4px 9px", fontSize: "11.5px" }}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="pos-modal-footer">
+              <button
+                type="button"
+                onClick={() => {
+                  setCart((prev) =>
+                    prev.map((item) =>
+                      item.id === selectedLineObj.id
+                        ? { ...item, customerNote: noteDraft }
+                        : item
+                    )
+                  );
+                  setNoteModalOpen(false);
+                  showToast("Customer note attached to orderline", "success");
+                }}
+                className="pos-btn-primary"
+              >
+                Apply Customer Note
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* ODOO PRICELIST & FISCAL POSITION SELECTOR MODAL                    */}
+      {/* ================================================================== */}
+      {pricelistModalOpen && (
+        <div className="pos-modal-backdrop" onClick={() => setPricelistModalOpen(false)}>
+          <div className="pos-modal-card" style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
+                Select Odoo Pricelist & Fiscal Tax Position
+              </h3>
+              <button type="button" onClick={() => setPricelistModalOpen(false)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div>
+                <label className="pos-field-label">Active Pricelist (`product.pricelist`)</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {ODOO_PRICELISTS.map((pl) => (
+                    <button
+                      key={pl.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPricelistId(pl.id);
+                        showToast(`Switched to ${pl.name}`, "success");
+                      }}
+                      className={`pos-quick-role-btn ${
+                        selectedPricelistId === pl.id ? "active-pl" : ""
+                      }`}
+                    >
+                      <span style={{ fontWeight: 700, color: "#0F172A" }}>{pl.name}</span>
+                      {selectedPricelistId === pl.id && (
+                        <CheckCircle2 size={16} color="#017E84" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="pos-field-label">Fiscal Tax Position (`account.fiscal.position`)</label>
+                <select
+                  value={selectedFiscalId}
+                  onChange={(e) => setSelectedFiscalId(e.target.value)}
+                  className="pos-input"
+                >
+                  {ODOO_FISCAL_POSITIONS.map((fp) => (
+                    <option key={fp.id} value={fp.id}>
+                      {fp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="pos-modal-footer">
+              <button type="button" onClick={() => setPricelistModalOpen(false)} className="pos-btn-primary">
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* ODOO CASH IN / CASH OUT MODAL                                      */}
+      {/* ================================================================== */}
+      {cashInOutModalOpen && (
+        <div className="pos-modal-backdrop" onClick={() => setCashInOutModalOpen(false)}>
+          <div className="pos-modal-card" style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
+                Odoo Cash In / Cash Out (`pos.session`)
+              </h3>
+              <button type="button" onClick={() => setCashInOutModalOpen(false)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleRecordCashInOut} style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => setCashMoveType("Cash In")}
+                  className={`pos-tender-option ${cashMoveType === "Cash In" ? "active" : ""}`}
+                >
+                  <span>➕ Cash In</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCashMoveType("Cash Out")}
+                  className={`pos-tender-option ${cashMoveType === "Cash Out" ? "active" : ""}`}
+                >
+                  <span>➖ Cash Out</span>
+                </button>
+              </div>
+              <div>
+                <label className="pos-field-label">Amount ({currency.trim()})</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={cashMoveAmount}
+                  onChange={(e) => setCashMoveAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="pos-input"
+                  required
+                />
+              </div>
+              <div>
+                <label className="pos-field-label">Reason / Reference</label>
+                <input
+                  type="text"
+                  value={cashMoveReason}
+                  onChange={(e) => setCashMoveReason(e.target.value)}
+                  placeholder="e.g., Petty cash for carrier bags, Added change coins..."
+                  className="pos-input"
+                  required
+                />
+              </div>
+              <button type="submit" className="pos-btn-primary" style={{ justifyContent: "center" }}>
+                Confirm {cashMoveType}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* ODOO CLOSING SESSION CONTROL MODAL                                 */}
+      {/* ================================================================== */}
+      {closeSessionModalOpen && (
+        <div className="pos-modal-backdrop" onClick={() => setCloseSessionModalOpen(false)}>
+          <div className="pos-modal-card" style={{ maxWidth: "540px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 800 }}>
+                Closing Session Control — {storeSettings?.branchName}
+              </h3>
+              <button type="button" onClick={() => setCloseSessionModalOpen(false)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div className="pos-mini-stat-box">
+                <div className="pos-summary-row">
+                  <span>Total Orders Validated:</span>
+                  <strong>{financialMetrics.activeOrderCount} orders ({formatMoney(financialMetrics.grossRevenue)})</strong>
+                </div>
+                <div className="pos-summary-row">
+                  <span>Opening Cash Float:</span>
+                  <span className="pos-mono">{formatMoney(storeSettings?.openingCashFloat || 500)}</span>
+                </div>
+                <div className="pos-summary-row">
+                  <span>+ Cash Payments Received:</span>
+                  <span className="pos-mono">+{formatMoney(financialMetrics.cashSales + financialMetrics.splitSales * 0.5)}</span>
+                </div>
+                <div className="pos-summary-row">
+                  <span>+/- Cash In / Out Movements:</span>
+                  <span className="pos-mono">{formatMoney(financialMetrics.cashInTotal - financialMetrics.cashOutTotal)}</span>
+                </div>
+                <div className="pos-grand-total-row">
+                  <span>Expected Cash in Drawer:</span>
+                  <span className="pos-grand-total-val">{formatMoney(financialMetrics.expectedDrawerCash)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="pos-field-label">Counted Physical Cash in Drawer ({currency.trim()})</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={countedCashClosing}
+                  onChange={(e) => setCountedCashClosing(e.target.value)}
+                  className="pos-input"
+                />
+              </div>
+            </div>
+            <div className="pos-modal-footer">
+              <button type="button" onClick={() => setCloseSessionModalOpen(false)} className="pos-btn-secondary">
+                Keep Session Open
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCloseSessionModalOpen(false);
+                  showToast("Session Closing Journal Entries Posted!", "success");
+                }}
+                className="pos-btn-primary"
+              >
+                Close Session & Post Entries
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* ODOO PRODUCT FORM SHEET MODAL (WITH SMART BUTTONS & TABS)          */}
+      {/* ================================================================== */}
+      {isProductModalOpen && editingProduct && (
+        <div className="pos-modal-backdrop" onClick={() => setIsProductModalOpen(false)}>
+          <div className="pos-modal-card" style={{ maxWidth: "680px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="pos-modal-header">
+              <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 800 }}>
+                Odoo Product Form (`product.template`)
+              </h3>
+              <button type="button" onClick={() => setIsProductModalOpen(false)} className="pos-icon-btn">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProduct} style={{ padding: "18px" }}>
+              {/* Odoo Smart Stat Buttons Bar */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "14px" }}>
+                <div className="pos-mini-stat-box">
+                  <div style={{ fontSize: "10.5px", color: "#64748B", fontWeight: 700 }}>ON HAND</div>
+                  <div className="pos-mono" style={{ fontSize: "16px", fontWeight: 800, color: "#017E84" }}>
+                    {editingProduct.stock} {editingProduct.unit || "Units"}
+                  </div>
+                </div>
+                <div className="pos-mini-stat-box">
+                  <div style={{ fontSize: "10.5px", color: "#64748B", fontWeight: 700 }}>FORECASTED</div>
+                  <div className="pos-mono" style={{ fontSize: "16px", fontWeight: 800, color: "#714B67" }}>
+                    {editingProduct.forecastedStock || editingProduct.stock} {editingProduct.unit || "Units"}
+                  </div>
+                </div>
+                <div className="pos-mini-stat-box">
+                  <div style={{ fontSize: "10.5px", color: "#64748B", fontWeight: 700 }}>WAREHOUSE BIN</div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#0F172A" }}>
+                    {editingProduct.warehouseLocation || "WH/Stock"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Name + Odoo Checkboxes */}
+              <div style={{ marginBottom: "14px" }}>
+                <label className="pos-field-label">Product Name</label>
+                <input
+                  type="text"
+                  value={editingProduct.name}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  className="pos-input"
+                  style={{ fontSize: "16px", fontWeight: 800 }}
+                  required
+                />
+                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginTop: "8px", fontSize: "12.5px", fontWeight: 600, color: "#334155" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <input
+                      type="checkbox"
+                      checked={editingProduct.canBeSold !== false}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, canBeSold: e.target.checked })}
+                    />
+                    Can be Sold
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <input
+                      type="checkbox"
+                      checked={editingProduct.availableInPos !== false}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, availableInPos: e.target.checked })}
+                    />
+                    Available in POS
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingProduct.toWeight)}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, toWeight: e.target.checked })}
+                    />
+                    To Weigh With Scale (kg)
+                  </label>
+                </div>
+              </div>
+
+              {/* Fields Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <div>
+                  <label className="pos-field-label">Product Type</label>
+                  <select
+                    value={editingProduct.productType || "Storable Product"}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, productType: e.target.value })}
+                    className="pos-input"
+                  >
+                    <option value="Storable Product">Storable Product</option>
+                    <option value="Consumable">Consumable</option>
+                    <option value="Service">Service</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="pos-field-label">POS Category</label>
+                  <select
+                    value={editingProduct.category}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                    className="pos-input"
+                  >
+                    {PRODUCT_CATEGORIES.filter((c) => c.id !== "All").map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="pos-field-label">Internal Reference (SKU)</label>
+                  <input
+                    type="text"
+                    value={editingProduct.sku}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
+                    className="pos-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="pos-field-label">Barcode (EAN-13)</label>
+                  <input
+                    type="text"
+                    value={editingProduct.barcode}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, barcode: e.target.value })}
+                    className="pos-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="pos-field-label">Sales Price ({currency.trim()})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingProduct.retailPrice}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, retailPrice: e.target.value })}
+                    className="pos-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="pos-field-label">Wholesale B2B Price ({currency.trim()})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingProduct.wholesalePrice}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, wholesalePrice: e.target.value })}
+                    className="pos-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="pos-field-label">Cost ({currency.trim()})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingProduct.costPrice}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, costPrice: e.target.value })}
+                    className="pos-input"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="pos-field-label">On-Hand Stock Quantity</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingProduct.stock}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
+                    className="pos-input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" }}>
+                <button type="button" onClick={() => setIsProductModalOpen(false)} className="pos-btn-secondary">
+                  Discard
+                </button>
+                <button type="submit" className="pos-btn-primary">
+                  Save Odoo Product
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* FLOATING ORDERS MODAL                                              */}
       {/* ================================================================== */}
       {showParkedDrawer && (
         <div className="pos-modal-backdrop" onClick={() => setShowParkedDrawer(false)}>
-          <div className="pos-modal-card" style={{ maxWidth: "520px" }} onClick={(e) => e.stopPropagation()}>
+          <div className="pos-modal-card" style={{ maxWidth: "500px" }} onClick={(e) => e.stopPropagation()}>
             <div className="pos-modal-header">
               <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
-                Parked / Held Customer Bills ({parkedBills.length})
+                Floating / Parked Orders ({parkedBills.length})
               </h3>
               <button type="button" onClick={() => setShowParkedDrawer(false)} className="pos-icon-btn">
                 <X size={18} />
@@ -2606,28 +2808,27 @@ export default function PosTerminal({
             </div>
             <div style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
               {parkedBills.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#94A3B8", padding: "24px 0" }}>
-                  No parked bills right now. Click &ldquo;Hold&rdquo; on any active cart to park a bill.
+                <div style={{ textAlign: "center", color: "#64748B", padding: "20px 0" }}>
+                  No floating orders held right now.
                 </div>
               ) : (
                 parkedBills.map((b) => (
                   <div key={b.id} className="pos-mini-stat-box" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <div style={{ fontWeight: 700, color: "#F8FAFC" }}>
+                      <div style={{ fontWeight: 800, color: "#0F172A" }}>
                         {b.id} • {b.customerName}
                       </div>
-                      <div style={{ fontSize: "11.5px", color: "#94A3B8" }}>
-                        {b.cart.length} SKU(s) • Total: {formatMoney(b.total)}
+                      <div style={{ fontSize: "12px", color: "#64748B" }}>
+                        {b.cart.length} line(s) • {formatMoney(b.total)}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleRecallBill(b)}
                       className="pos-btn-primary"
-                      style={{ padding: "7px 12px", fontSize: "12px" }}
                     >
                       <PlayCircle size={14} />
-                      <span>Recall Bill</span>
+                      <span>Load Order</span>
                     </button>
                   </div>
                 ))
@@ -2638,22 +2839,22 @@ export default function PosTerminal({
       )}
 
       {/* ================================================================== */}
-      {/* MULTI-TENDER CHECKOUT MODAL                                        */}
+      {/* ODOO PAYMENT SCREEN MODAL                                          */}
       {/* ================================================================== */}
       {isCheckoutOpen && (
         <div className="pos-modal-backdrop" onClick={() => setIsCheckoutOpen(false)}>
           <div
             className="pos-modal-card"
-            style={{ maxWidth: "600px", width: "95%" }}
+            style={{ maxWidth: "620px", width: "95%" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="pos-modal-header">
               <div>
                 <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 800 }}>
-                  Multi-Tender Checkout — {formatMoney(cartSummary.grandTotal)}
+                  Odoo Payment Screen — {formatMoney(cartSummary.grandTotal)}
                 </h3>
-                <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#94A3B8" }}>
-                  Customer: {activeCustomer?.name} • Pricing Tier: {pricingMode.toUpperCase()}
+                <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748B" }}>
+                  Partner: {activeCustomer?.name} • Pricelist: {activePricelist.name}
                 </p>
               </div>
               <button type="button" onClick={() => setIsCheckoutOpen(false)} className="pos-icon-btn">
@@ -2661,15 +2862,15 @@ export default function PosTerminal({
               </button>
             </div>
 
-            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* 5 Tender Mode Buttons */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(105px, 1fr))", gap: "8px" }}>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "15px" }}>
+              {/* Payment Methods */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "8px" }}>
                 {[
                   { id: "Cash", label: "Cash", icon: Banknote },
-                  { id: "Card", label: "Card POS", icon: CreditCard },
+                  { id: "Card", label: "Bank Card", icon: CreditCard },
                   { id: "Mobile QR Wallet", label: "QR Wallet", icon: QrCode },
-                  { id: "Split (Cash + Card)", label: "Split Pay", icon: Split },
-                  { id: "Customer Credit", label: "Credit Ledger", icon: BookOpen },
+                  { id: "Split (Cash + Card)", label: "Split Tender", icon: Split },
+                  { id: "Customer Credit", label: "Customer Account", icon: BookOpen },
                 ].map((m) => {
                   const IconComp = m.icon;
                   const active = paymentMethod === m.id;
@@ -2687,10 +2888,9 @@ export default function PosTerminal({
                 })}
               </div>
 
-              {/* Tender-Specific Controls */}
               {paymentMethod === "Cash" && (
                 <div className="pos-mini-stat-box">
-                  <label className="pos-field-label">Cash Amount Tendered ({currency.trim()})</label>
+                  <label className="pos-field-label">Cash Tendered ({currency.trim()})</label>
                   <input
                     type="number"
                     step="0.01"
@@ -2699,7 +2899,6 @@ export default function PosTerminal({
                     className="pos-input"
                     style={{ fontSize: "18px", fontWeight: 800, fontFamily: "monospace" }}
                   />
-                  {/* Quick Denomination Buttons */}
                   <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
                     {[
                       cartSummary.grandTotal,
@@ -2715,13 +2914,13 @@ export default function PosTerminal({
                         className="pos-btn-secondary"
                         style={{ padding: "6px 10px", fontSize: "12px", fontFamily: "monospace" }}
                       >
-                        {idx === 0 ? `Exact (${formatMoney(amt)})` : formatMoney(amt)}
+                        {idx === 0 ? `Exact (${formatMoney(amt)})` : `+${formatMoney(amt)}`}
                       </button>
                     ))}
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px", paddingTop: "10px", borderTop: "1px solid rgba(148,163,184,0.15)" }}>
-                    <span style={{ fontWeight: 700, color: "#94A3B8" }}>CHANGE DUE TO CUSTOMER:</span>
-                    <span style={{ fontSize: "20px", fontWeight: 800, color: "#10B981", fontFamily: "monospace" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", paddingTop: "10px", borderTop: "1px solid #E2E8F0" }}>
+                    <span style={{ fontWeight: 700, color: "#475569" }}>CHANGE DUE:</span>
+                    <span style={{ fontSize: "20px", fontWeight: 900, color: "#059669", fontFamily: "monospace" }}>
                       {formatMoney(Math.max(0, (Number(cashTendered) || 0) - cartSummary.grandTotal))}
                     </span>
                   </div>
@@ -2730,74 +2929,35 @@ export default function PosTerminal({
 
               {paymentMethod === "Mobile QR Wallet" && (
                 <div className="pos-mini-stat-box" style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "12.5px", color: "#94A3B8", marginBottom: "10px" }}>
-                    Scan Dynamic Invoice QR Code for Instant Payment ({formatMoney(cartSummary.grandTotal)})
-                  </div>
                   <SvgQrCode
                     payload={`PRO-POS|${storeSettings?.storeName}|${cartSummary.grandTotal.toFixed(2)}`}
                   />
                 </div>
               )}
 
-              {paymentMethod === "Split (Cash + Card)" && (
-                <div className="pos-mini-stat-box">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                    <div>
-                      <label className="pos-field-label">Cash Portion ({currency.trim()})</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={splitCashAmount}
-                        onChange={(e) => setSplitCashAmount(e.target.value)}
-                        className="pos-input"
-                      />
-                    </div>
-                    <div>
-                      <label className="pos-field-label">Remaining on Card ({currency.trim()})</label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={formatMoney(
-                          Math.max(0, cartSummary.grandTotal - (Number(splitCashAmount) || 0))
-                        )}
-                        className="pos-input"
-                        style={{ color: "#60A5FA", fontWeight: 700 }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === "Customer Credit" && (
-                <div className="pos-mini-stat-box">
-                  <div style={{ fontSize: "13px", color: "#F8FAFC", fontWeight: 700 }}>
-                    Account: {activeCustomer?.name}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px" }}>
-                    Current Credit Balance: {formatMoney(activeCustomer?.creditBalance)} • Limit: {formatMoney(activeCustomer?.creditLimit)}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="pos-field-label">Invoice / Cashier Note (Optional)</label>
-                <input
-                  type="text"
-                  value={orderNote}
-                  onChange={(e) => setOrderNote(e.target.value)}
-                  placeholder="Add warranty note, delivery instruction, or PO reference..."
-                  className="pos-input"
-                />
+              {/* Odoo Formal Invoice Toggle */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#F8FAFC", border: "1px solid #CBD5E1", borderRadius: "10px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, fontSize: "13.5px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={generateFormalInvoice}
+                    onChange={(e) => setGenerateFormalInvoice(e.target.checked)}
+                  />
+                  <span>📄 Generate Formal Odoo Tax Invoice (`account.move`)</span>
+                </label>
+                <span style={{ fontSize: "11.5px", color: "#017E84", fontWeight: 700 }}>
+                  {generateFormalInvoice ? "INVOICED" : "RECEIPT ONLY"}
+                </span>
               </div>
             </div>
 
             <div className="pos-modal-footer">
               <button type="button" onClick={() => setIsCheckoutOpen(false)} className="pos-btn-secondary">
-                Cancel
+                Back to Order
               </button>
-              <button type="button" onClick={handleCompleteSale} className="pos-btn-charge" style={{ padding: "12px 24px" }}>
+              <button type="button" onClick={handleCompleteSale} className="pos-btn-primary" style={{ padding: "12px 24px", fontSize: "14px" }}>
                 <CheckCircle2 size={17} />
-                <span>Complete Sale & Generate 80mm Receipt</span>
+                <span>Validate & Print Receipt</span>
               </button>
             </div>
           </div>
@@ -2805,33 +2965,25 @@ export default function PosTerminal({
       )}
 
       {/* ================================================================== */}
-      {/* 80MM THERMAL RECEIPT PREVIEW & PRINT MODAL                         */}
+      {/* 80MM THERMAL RECEIPT PREVIEW MODAL                                 */}
       {/* ================================================================== */}
       {activeReceiptOrder && (
         <div className="pos-modal-backdrop" onClick={() => setActiveReceiptOrder(null)}>
-          <div
-            className="pos-modal-card"
-            style={{ maxWidth: "430px", width: "95%" }}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="pos-modal-card" style={{ maxWidth: "430px" }} onClick={(e) => e.stopPropagation()}>
             <div className="pos-modal-header">
               <span style={{ fontWeight: 800, fontSize: "15px" }}>
-                80mm Thermal Receipt — {activeReceiptOrder.id}
+                Odoo POS 80mm Receipt — {activeReceiptOrder.id}
               </span>
               <button type="button" onClick={() => setActiveReceiptOrder(null)} className="pos-icon-btn">
                 <X size={18} />
               </button>
             </div>
 
-            <div style={{ padding: "18px", background: "#0B111E", maxHeight: "75vh", overflowY: "auto" }}>
-              {/* Realistic White 80mm Thermal Paper Ticket */}
+            <div style={{ padding: "18px", background: "#F1F5F9", maxHeight: "75vh", overflowY: "auto" }}>
               <div className="pos-thermal-paper">
-                <div style={{ textAlign: "center", borderBottom: "1px dashed #334155", paddingBottom: "10px", marginBottom: "10px" }}>
-                  <div style={{ fontSize: "16px", fontWeight: 900, letterSpacing: "0.02em" }}>
+                <div style={{ textAlign: "center", borderBottom: "1px dashed #64748B", paddingBottom: "10px", marginBottom: "10px" }}>
+                  <div style={{ fontSize: "16px", fontWeight: 900 }}>
                     {storeSettings?.storeName || "PRO GENERAL POS"}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
-                    {storeSettings?.branchName}
                   </div>
                   <div style={{ fontSize: "10.5px", color: "#475569" }}>
                     {storeSettings?.address}
@@ -2839,82 +2991,66 @@ export default function PosTerminal({
                   <div style={{ fontSize: "10.5px", color: "#475569" }}>
                     Tel: {storeSettings?.phone} • {storeSettings?.taxId}
                   </div>
-                </div>
-
-                <div style={{ fontSize: "11px", display: "flex", flexDirection: "column", gap: "3px", borderBottom: "1px dashed #334155", paddingBottom: "8px", marginBottom: "8px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>INVOICE:</span>
-                    <strong>{activeReceiptOrder.id}</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>DATE:</span>
-                    <span>{new Date(activeReceiptOrder.timestamp).toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>CASHIER:</span>
-                    <span>{activeReceiptOrder.cashier}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>CUSTOMER:</span>
-                    <strong>{activeReceiptOrder.customerName}</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>TENDER:</span>
-                    <strong>{activeReceiptOrder.paymentMethod}</strong>
+                  <div style={{ fontSize: "11px", fontWeight: 700, marginTop: "4px" }}>
+                    Served by {activeReceiptOrder.cashier}
                   </div>
                 </div>
 
-                {/* Itemized Table */}
-                <div style={{ fontSize: "11px", borderBottom: "1px dashed #334155", paddingBottom: "8px", marginBottom: "8px" }}>
+                <div style={{ fontSize: "11px", marginBottom: "8px", borderBottom: "1px dashed #64748B", paddingBottom: "8px" }}>
+                  <div><strong>{activeReceiptOrder.id}</strong></div>
+                  <div>Invoice: {activeReceiptOrder.invoiceRef}</div>
+                  <div>Customer: {activeReceiptOrder.customerName}</div>
+                  <div>Date: {new Date(activeReceiptOrder.timestamp).toLocaleString()}</div>
+                </div>
+
+                <div style={{ fontSize: "11px", borderBottom: "1px dashed #64748B", paddingBottom: "8px", marginBottom: "8px" }}>
                   {activeReceiptOrder.items.map((item, i) => (
                     <div key={i} style={{ marginBottom: "6px" }}>
                       <div style={{ fontWeight: 700 }}>{item.name}</div>
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "#334155" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span>
                           {item.qty} × {formatMoney(item.price)}
                           {item.discount > 0 ? ` (-${item.discount}%)` : ""}
                         </span>
                         <strong>
-                          {formatMoney(
-                            item.qty * item.price * (1 - (item.discount || 0) / 100)
-                          )}
+                          {formatMoney(item.qty * item.price * (1 - (item.discount || 0) / 100))}
                         </strong>
                       </div>
+                      {item.customerNote && (
+                        <div style={{ fontSize: "10px", fontStyle: "italic", color: "#475569" }}>
+                          Note: {item.customerNote}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
 
-                {/* Totals */}
-                <div style={{ fontSize: "11.5px", display: "flex", flexDirection: "column", gap: "4px", borderBottom: "1px dashed #334155", paddingBottom: "10px", marginBottom: "10px" }}>
+                <div style={{ fontSize: "11.5px", borderBottom: "1px dashed #64748B", paddingBottom: "10px", marginBottom: "10px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span>Subtotal:</span>
                     <span>{formatMoney(activeReceiptOrder.subtotal)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Discount:</span>
-                    <span>-{formatMoney(activeReceiptOrder.discountAmount)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Tax:</span>
+                    <span>Taxes:</span>
                     <span>{formatMoney(activeReceiptOrder.taxAmount)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: 900, marginTop: "4px" }}>
-                    <span>TOTAL PAID:</span>
+                    <span>TOTAL:</span>
                     <span>{formatMoney(activeReceiptOrder.total)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Amount Tendered:</span>
+                    <span>{activeReceiptOrder.paymentMethod}:</span>
                     <span>{formatMoney(activeReceiptOrder.amountTendered)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Change Due:</span>
+                    <span>Change:</span>
                     <strong>{formatMoney(activeReceiptOrder.changeDue)}</strong>
                   </div>
                 </div>
 
                 <div style={{ textAlign: "center" }}>
-                  <SvgBarcode value={activeReceiptOrder.id.replace(/[^0-9]/g, "") || "20261001"} width={190} height={38} />
-                  <p style={{ fontSize: "10px", color: "#475569", marginTop: "8px", lineHeight: 1.4 }}>
+                  <SvgBarcode value="8901023009912" width={180} height={36} />
+                  <p style={{ fontSize: "10px", color: "#475569", marginTop: "8px" }}>
                     {storeSettings?.receiptFooter}
                   </p>
                 </div>
@@ -2922,20 +3058,12 @@ export default function PosTerminal({
             </div>
 
             <div className="pos-modal-footer">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="pos-btn-secondary"
-              >
+              <button type="button" onClick={() => window.print()} className="pos-btn-secondary">
                 <Printer size={15} />
-                <span>Print 80mm Receipt</span>
+                <span>Print Receipt</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveReceiptOrder(null)}
-                className="pos-btn-primary"
-              >
-                <span>Start Next Sale</span>
+              <button type="button" onClick={() => setActiveReceiptOrder(null)} className="pos-btn-primary">
+                <span>Next Order</span>
               </button>
             </div>
           </div>
@@ -2943,173 +3071,35 @@ export default function PosTerminal({
       )}
 
       {/* ================================================================== */}
-      {/* ADD / EDIT PRODUCT SKU MODAL                                       */}
-      {/* ================================================================== */}
-      {isProductModalOpen && editingProduct && (
-        <div className="pos-modal-backdrop" onClick={() => setIsProductModalOpen(false)}>
-          <div className="pos-modal-card" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
-            <div className="pos-modal-header">
-              <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
-                Configure SKU Product & Pricing Tiers
-              </h3>
-              <button type="button" onClick={() => setIsProductModalOpen(false)} className="pos-icon-btn">
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleSaveProduct} style={{ padding: "18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className="pos-field-label">Product Name</label>
-                <input
-                  type="text"
-                  value={editingProduct.name}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pos-field-label">SKU Code</label>
-                <input
-                  type="text"
-                  value={editingProduct.sku}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pos-field-label">EAN-13 Barcode</label>
-                <input
-                  type="text"
-                  value={editingProduct.barcode}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, barcode: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pos-field-label">Department Category</label>
-                <select
-                  value={editingProduct.category}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                  className="pos-input"
-                >
-                  {PRODUCT_CATEGORIES.filter((c) => c.id !== "All").map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="pos-field-label">Cost Price ({currency.trim()})</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editingProduct.costPrice}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, costPrice: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pos-field-label">Wholesale Price ({currency.trim()})</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editingProduct.wholesalePrice}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, wholesalePrice: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pos-field-label">Retail Price ({currency.trim()})</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editingProduct.retailPrice}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, retailPrice: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pos-field-label">Stock Quantity</label>
-                <input
-                  type="number"
-                  value={editingProduct.stock}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, stock: e.target.value })}
-                  className="pos-input"
-                  required
-                />
-              </div>
-              <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
-                <button type="button" onClick={() => setIsProductModalOpen(false)} className="pos-btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="pos-btn-primary">
-                  Save SKU to Catalog
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================== */}
-      {/* BARCODE STICKER LABEL STUDIO MODAL                                 */}
+      {/* BARCODE STICKER STUDIO MODAL                                       */}
       {/* ================================================================== */}
       {barcodeLabelProduct && (
         <div className="pos-modal-backdrop" onClick={() => setBarcodeLabelProduct(null)}>
-          <div className="pos-modal-card" style={{ maxWidth: "620px" }} onClick={(e) => e.stopPropagation()}>
+          <div className="pos-modal-card" style={{ maxWidth: "600px" }} onClick={(e) => e.stopPropagation()}>
             <div className="pos-modal-header">
               <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
-                Printable Barcode Shelf Sticker Studio — {barcodeLabelProduct.name}
+                Barcode Shelf Labels — {barcodeLabelProduct.name}
               </h3>
               <button type="button" onClick={() => setBarcodeLabelProduct(null)} className="pos-icon-btn">
                 <X size={18} />
               </button>
             </div>
             <div style={{ padding: "18px" }}>
-              <div style={{ marginBottom: "14px" }}>
-                <label className="pos-field-label">Select Product for Sticker Sheet</label>
-                <select
-                  value={barcodeLabelProduct.id}
-                  onChange={(e) => {
-                    const p = products.find((item) => item.id === e.target.value);
-                    if (p) setBarcodeLabelProduct(p);
-                  }}
-                  className="pos-input"
-                >
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      [{p.sku}] {p.name} — {formatMoney(p.retailPrice)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: "10px", background: "#0B111E", padding: "14px", borderRadius: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))", gap: "10px", background: "#F8FAFC", padding: "14px", borderRadius: "10px", border: "1px solid #E2E8F0" }}>
                 {[1, 2, 3, 4, 5, 6].map((idx) => (
                   <div
                     key={idx}
                     style={{
                       background: "#FFFFFF",
-                      color: "#090D16",
+                      border: "1px solid #CBD5E1",
                       padding: "10px",
                       borderRadius: "8px",
                       textAlign: "center",
                     }}
                   >
-                    <div style={{ fontSize: "9px", fontWeight: 800, textTransform: "uppercase", color: "#475569" }}>
-                      {storeSettings?.storeName}
-                    </div>
-                    <div style={{ fontSize: "11px", fontWeight: 800, margin: "3px 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {barcodeLabelProduct.name}
-                    </div>
-                    <SvgBarcode value={barcodeLabelProduct.barcode} width={150} height={34} />
-                    <div style={{ fontSize: "13px", fontWeight: 900, marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 800 }}>{barcodeLabelProduct.name}</div>
+                    <SvgBarcode value={barcodeLabelProduct.barcode} width={145} height={32} />
+                    <div style={{ fontSize: "13px", fontWeight: 900, marginTop: "4px", color: "#017E84" }}>
                       {formatMoney(barcodeLabelProduct.retailPrice)}
                     </div>
                   </div>
@@ -3119,7 +3109,7 @@ export default function PosTerminal({
             <div className="pos-modal-footer">
               <button type="button" onClick={() => window.print()} className="pos-btn-primary">
                 <Printer size={15} />
-                <span>Print Barcode Sticker Sheet</span>
+                <span>Print Sheet</span>
               </button>
             </div>
           </div>
@@ -3127,14 +3117,14 @@ export default function PosTerminal({
       )}
 
       {/* ================================================================== */}
-      {/* ADD NEW CUSTOMER MODAL                                             */}
+      {/* CREATE PARTNER / CUSTOMER MODAL                                    */}
       {/* ================================================================== */}
       {isCustomerModalOpen && (
         <div className="pos-modal-backdrop" onClick={() => setIsCustomerModalOpen(false)}>
-          <div className="pos-modal-card" style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
+          <div className="pos-modal-card" style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
             <div className="pos-modal-header">
               <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
-                Register New Customer & Credit Account
+                Create Customer / Partner (`res.partner`)
               </h3>
               <button type="button" onClick={() => setIsCustomerModalOpen(false)} className="pos-icon-btn">
                 <X size={18} />
@@ -3142,37 +3132,58 @@ export default function PosTerminal({
             </div>
             <form onSubmit={handleCreateCustomer} style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
-                <label className="pos-field-label">Customer / Business Name</label>
+                <label className="pos-field-label">Customer / Company Name</label>
                 <input
                   type="text"
                   value={newCustomerForm.name}
                   onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
-                  placeholder="e.g., Horizon Retail Mart"
+                  placeholder="Horizon Retail Mart"
                   className="pos-input"
                   required
                 />
               </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div>
+                  <label className="pos-field-label">Phone</label>
+                  <input
+                    type="text"
+                    value={newCustomerForm.phone}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                    className="pos-input"
+                  />
+                </div>
+                <div>
+                  <label className="pos-field-label">Tax ID / NTN / VAT</label>
+                  <input
+                    type="text"
+                    value={newCustomerForm.vatNumber}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, vatNumber: e.target.value })}
+                    className="pos-input"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="pos-field-label">Phone Number</label>
+                <label className="pos-field-label">Street Address</label>
                 <input
                   type="text"
-                  value={newCustomerForm.phone}
-                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
-                  placeholder="+1 (555) 019-2834"
+                  value={newCustomerForm.address}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, address: e.target.value })}
                   className="pos-input"
                 />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div>
-                  <label className="pos-field-label">Membership Tier</label>
+                  <label className="pos-field-label">Default Pricelist</label>
                   <select
-                    value={newCustomerForm.tier}
-                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, tier: e.target.value })}
+                    value={newCustomerForm.pricelistId}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, pricelistId: e.target.value })}
                     className="pos-input"
                   >
-                    <option value="VIP Gold">VIP Gold</option>
-                    <option value="Wholesale B2B">Wholesale B2B</option>
-                    <option value="Silver Member">Silver Member</option>
+                    {ODOO_PRICELISTS.map((pl) => (
+                      <option key={pl.id} value={pl.id}>
+                        {pl.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -3185,8 +3196,8 @@ export default function PosTerminal({
                   />
                 </div>
               </div>
-              <button type="submit" className="pos-btn-primary" style={{ justifyContent: "center", marginTop: "6px" }}>
-                Save Customer Account
+              <button type="submit" className="pos-btn-primary" style={{ justifyContent: "center" }}>
+                Save Partner
               </button>
             </form>
           </div>
@@ -3201,21 +3212,15 @@ export default function PosTerminal({
           <div className="pos-modal-card" style={{ maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
             <div className="pos-modal-header">
               <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>
-                Settle Credit Ledger — {settlingCustomer.name}
+                Register Partner Payment — {settlingCustomer.name}
               </h3>
               <button type="button" onClick={() => setSettlingCustomer(null)} className="pos-icon-btn">
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleSettleCredit} style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ fontSize: "13px", color: "#94A3B8" }}>
-                Current Outstanding Balance:{" "}
-                <strong style={{ color: "#F59E0B" }}>
-                  {formatMoney(settlingCustomer.creditBalance)}
-                </strong>
-              </div>
               <div>
-                <label className="pos-field-label">Payment Amount Received ({currency.trim()})</label>
+                <label className="pos-field-label">Amount Received ({currency.trim()})</label>
                 <input
                   type="number"
                   step="0.01"
@@ -3226,14 +3231,13 @@ export default function PosTerminal({
                 />
               </div>
               <button type="submit" className="pos-btn-primary" style={{ justifyContent: "center" }}>
-                Confirm Credit Payment
+                Validate Payment
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Floating Toast Notification */}
       {toast && (
         <div className={`pos-toast pos-toast-${toast.type}`}>
           <CheckCircle2 size={16} />
